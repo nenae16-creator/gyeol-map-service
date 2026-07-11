@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
 import type { MapRegionReference } from "../domain/gyeolEvidence";
+import { publicAssetUrl } from "../utils/publicAssetUrl";
 import styles from "./interactive-map/InteractiveDaedongMapIntro.module.css";
 
 type IntroPhase =
@@ -34,17 +35,19 @@ type AssetKey =
   | "walker"
   | `panel-${number}`;
 
-const CLEAN_PLATE_URL = "/assets/gyeol-clean-desk-plate.png";
-const IDLE_PLATE_URL = "/assets/gyeol-opening-desk-plate-v2.png";
-const STATIC_PLATE_URL = "/assets/gyeol-static-desk-plate.png";
-const STATIC_MASK_URL = "/assets/static-paper-feather-mask.png";
-const CENTERED_MAP_URL = "/assets/daedongyeojido-idle-toned-v2.png";
-const FOLDED_MAP_URL = "/assets/gyeol-folded-route-base-v5.png";
-const DETAIL_MAP_URL = "/assets/official/nmk-shinsu19997-doseongdo-original.jpg";
-const WALKER_URL = "/assets/kim-jeongho-walker.png";
+const CLEAN_PLATE_URL = publicAssetUrl("assets/gyeol-clean-desk-plate.png");
+const IDLE_PLATE_URL = publicAssetUrl("assets/gyeol-opening-desk-plate-v2.png");
+const STATIC_PLATE_URL = publicAssetUrl("assets/gyeol-static-desk-plate.png");
+const STATIC_MASK_URL = publicAssetUrl("assets/static-paper-feather-mask.png");
+const CENTERED_MAP_URL = publicAssetUrl("assets/daedongyeojido-idle-toned-v2.png");
+const FOLDED_MAP_URL = publicAssetUrl("assets/gyeol-folded-route-base-v5.png");
+const DETAIL_MAP_URL = publicAssetUrl(
+  "assets/official/nmk-shinsu19997-doseongdo-original.jpg"
+);
+const WALKER_URL = publicAssetUrl("assets/kim-jeongho-walker.png");
 const FOLD_PANEL_URLS = Array.from(
   { length: 8 },
-  (_, index) => `/assets/gyeol-fold-panel-${index + 1}.png`
+  (_, index) => publicAssetUrl(`assets/gyeol-fold-panel-${index + 1}.png`)
 );
 
 const FOLDED_IMAGE = {
