@@ -1,0 +1,36 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  margin: 0;
+  background: #160d07;
+  font-family: "Noto Serif KR", "Source Han Serif KR", "Batang", serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  padding: 0;
+  border: 0;
+  color: inherit;
+}
+
+img,
+svg {
+  display: block;
+}

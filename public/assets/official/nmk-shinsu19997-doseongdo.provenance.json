@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "artifactId": "nmk-shinsu19997-img07-doseongdo-original",
+  "source": {
+    "organization": "국립중앙박물관",
+    "recordId": "신수19997",
+    "relicId": "4502",
+    "emuseumId": "PS0100100101101999700000",
+    "galleryIndex": 7,
+    "originalFileName": "ssu019997-00-08.jpg",
+    "recordUrl": "https://www.museum.go.kr/site/main/relic/search/view?relicId=4502",
+    "imageUrl": "https://www.museum.go.kr/relic_image/PS01001001/ssu019/2018/0723134130201/ssu019997-00-08.jpg",
+    "identificationEvidenceUrl": "https://www.museum.go.kr/MUSEUM/contents/M0501000000.do?relicRecommendId=269063&schM=view",
+    "acquisitionMethod": "official-public-image-url",
+    "acquiredAt": "2026-07-11",
+    "sha256": "F59EDC35FF78E57A7A4EB08BC6790597308C4E8F1664A0DF43F324776BED802A",
+    "mediaType": "image/jpeg",
+    "width": 3000,
+    "height": 1825
+  },
+  "rights": {
+    "licenseId": "KOGL-TYPE-1",
+    "licenseName": "공공누리 제1유형 · 출처표시",
+    "licenseUrl": "https://www.kogl.or.kr/info/licenseType1.do",
+    "rightsStatementUrl": "https://www.museum.go.kr/site/main/relic/search/view?relicId=4502",
+    "observedAt": "2026-07-11",
+    "attributionRequired": true,
+    "modificationAllowed": true,
+    "commercialUseAllowed": true,
+    "attributionTextKo": "출처: 국립중앙박물관, 「대동여지도」(신수19997, 김정호, 1861), 공공누리 제1유형"
+  },
+  "localAsset": {
+    "publicPath": "/assets/official/nmk-shinsu19997-doseongdo-original.jpg",
+    "pixelTransformations": [],
+    "presentationOnly": [
+      "CSS crop",
+      "CSS color and shadow",
+      "separate route overlay",
+      "separate modern-location estimate markers"
+    ]
+  }
+}

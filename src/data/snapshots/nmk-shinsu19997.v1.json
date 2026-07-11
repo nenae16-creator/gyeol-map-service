@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "snapshotCreatedAt": "2026-07-11T14:40:30.123Z",
+  "record": {
+    "collectionNumber": "신수19997",
+    "title": "대동여지도",
+    "titleHanja": "大東輿地圖",
+    "creator": "김정호(金正浩)",
+    "period": "한국-조선 · 1861년",
+    "edition": "신유본(1861)",
+    "material": "종이",
+    "format": "22층 · 22권",
+    "roadNotation": "도로에는 10리마다 점을 표시",
+    "emuseumId": "PS0100100101101999700000",
+    "images": [
+      {
+        "id": "nmk-shinsu19997-doseongdo",
+        "galleryIndex": 7,
+        "title": "도성도",
+        "fileName": "ssu019997-00-08.jpg",
+        "width": 3000,
+        "height": 1825,
+        "imageUrl": "https://www.museum.go.kr/relic_image/PS01001001/ssu019/2018/0723134130201/ssu019997-00-08.jpg",
+        "identificationEvidenceUrl": "https://www.museum.go.kr/MUSEUM/contents/M0501000000.do?relicRecommendId=269063&schM=view",
+        "rightsSourceId": "nmk-collection-shinsu19997",
+        "localAssetPath": "/assets/official/nmk-shinsu19997-doseongdo-original.jpg",
+        "sha256": "F59EDC35FF78E57A7A4EB08BC6790597308C4E8F1664A0DF43F324776BED802A"
+      },
+      {
+        "id": "nmk-shinsu19997-gyeongjo-obudo",
+        "galleryIndex": 8,
+        "title": "경조오부도",
+        "fileName": "ssu019997-00-09.jpg",
+        "width": 3000,
+        "height": 1815,
+        "imageUrl": "https://www.museum.go.kr/relic_image/PS01001001/ssu019/2018/0723134130201/ssu019997-00-09.jpg",
+        "identificationEvidenceUrl": "https://www.museum.go.kr/MUSEUM/contents/M0701040000.do?arcId=23486&catCustomType=post&catId=93&schM=view",
+        "rightsSourceId": "nmk-collection-shinsu19997"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "id": "nmk-collection-shinsu19997",
+      "organization": "국립중앙박물관",
+      "recordTitle": "대동여지도",
+      "recordId": "신수19997",
+      "recordUrl": "https://www.museum.go.kr/site/main/relic/search/view?relicId=4502",
+      "accessedAt": "2026-07-11",
+      "license": {
+        "name": "공공누리 제1유형 · 출처표시",
+        "url": "https://www.kogl.or.kr/info/licenseType1.do",
+        "appliesTo": "image",
+        "attributionRequired": true
+      }
+    },
+    {
+      "id": "data-go-emuseum-gw",
+      "organization": "공공데이터포털 · 국립중앙박물관",
+      "datasetTitle": "전국 박물관 유물정보_GW",
+      "datasetId": "15159017",
+      "recordTitle": "전국 박물관 유물정보_GW API",
+      "recordId": "15159017",
+      "recordUrl": "https://www.data.go.kr/data/15159017/openapi.do",
+      "datasetUrl": "https://www.data.go.kr/data/15159017/openapi.do",
+      "accessedAt": "2026-07-11",
+      "sourceUpdatedAt": "2026-06-16",
+      "license": {
+        "name": "공공누리 제0유형 · 자유이용",
+        "url": "https://www.kogl.or.kr/info/licenseType0.do",
+        "appliesTo": "metadata",
+        "attributionRequired": false
+      }
+    },
+    {
+      "id": "seoul-gungisi-cityhall",
+      "organization": "서울특별시 문화포털",
+      "recordTitle": "군기시유적전시실",
+      "recordId": "facId-37",
+      "recordUrl": "https://culture.seoul.go.kr/night/sub/nightFac/view.do?facId=37&pageIndex=1",
+      "accessedAt": "2026-07-12",
+      "license": {
+        "name": "서울문화포털 저작권 정책 적용 · 사실 확인용 출처",
+        "url": "https://culture.seoul.go.kr/night/sub/nightFac/view.do?facId=37&pageIndex=1",
+        "appliesTo": "text",
+        "attributionRequired": true
+      }
+    }
+  ],
+  "mapRegions": [
+    {
+      "id": "local-hanseong-provisional",
+      "label": "한성부 권역 후보",
+      "mapId": "local-daedongyeojido-visual-v2",
+      "collectionNumber": "신수19997",
+      "edition": "신유본(1861)",
+      "assetPath": "/assets/daedongyeojido-idle-toned-v2.png",
+      "assetSpace": {
+        "width": 512,
+        "height": 767,
+        "origin": "top-left"
+      },
+      "point": {
+        "unit": "normalized",
+        "x": 0.349695,
+        "y": 0.44069
+      },
+      "bounds": {
+        "unit": "normalized",
+        "x": 0.279383,
+        "y": 0.393754,
+        "width": 0.140625,
+        "height": 0.093872
+      },
+      "registrationStatus": "approximate",
+      "reviewedAt": "2026-07-11",
+      "reviewNote": "결과 화면의 전체지도에 쓰는 512×767 로컬 파생 이미지 좌표계로 기존 한성부 표식을 환산한 임시 등록값입니다. 후속 지도 체험은 공식 도성도로 교체했지만, 이 전체지도 점은 공식 첩·면 좌표나 역사 경계로 검수된 값이 아닙니다."
+    },
+    {
+      "id": "doseongdo-gyeongbokgung-estimate",
+      "label": "경복궁 · 도상 식별",
+      "modernPlaceId": "gyeongbokgung",
+      "mapId": "nmk-shinsu19997-img07-doseongdo-original",
+      "collectionNumber": "신수19997",
+      "edition": "신유본(1861)",
+      "assetPath": "/assets/official/nmk-shinsu19997-doseongdo-original.jpg",
+      "assetSha256": "F59EDC35FF78E57A7A4EB08BC6790597308C4E8F1664A0DF43F324776BED802A",
+      "assetSpace": {
+        "width": 3000,
+        "height": 1825,
+        "origin": "top-left"
+      },
+      "point": {
+        "unit": "normalized",
+        "x": 0.380667,
+        "y": 0.318904
+      },
+      "bounds": {
+        "unit": "normalized",
+        "x": 0.370667,
+        "y": 0.294247,
+        "width": 0.02,
+        "height": 0.049315
+      },
+      "registrationStatus": "approximate",
+      "reviewedAt": "2026-07-11",
+      "reviewNote": "공식 도성도에서 경복궁 도상을 시각 판독한 기준점입니다. 현대 측량 좌표와의 지오리퍼런싱 결과는 아닙니다."
+    },
+    {
+      "id": "doseongdo-gwanghwamun-estimate",
+      "label": "광화문 · 도상 식별",
+      "modernPlaceId": "gwanghwamun",
+      "mapId": "nmk-shinsu19997-img07-doseongdo-original",
+      "collectionNumber": "신수19997",
+      "edition": "신유본(1861)",
+      "assetPath": "/assets/official/nmk-shinsu19997-doseongdo-original.jpg",
+      "assetSha256": "F59EDC35FF78E57A7A4EB08BC6790597308C4E8F1664A0DF43F324776BED802A",
+      "assetSpace": {
+        "width": 3000,
+        "height": 1825,
+        "origin": "top-left"
+      },
+      "point": {
+        "unit": "normalized",
+        "x": 0.382333,
+        "y": 0.37589
+      },
+      "bounds": {
+        "unit": "normalized",
+        "x": 0.374,
+        "y": 0.356712,
+        "width": 0.016667,
+        "height": 0.038356
+      },
+      "registrationStatus": "approximate",
+      "reviewedAt": "2026-07-11",
+      "reviewNote": "공식 도성도에서 경복궁 남문인 광화문 도상을 시각 판독한 기준점입니다. 현대 측량 좌표와의 지오리퍼런싱 결과는 아닙니다."
+    },
+    {
+      "id": "doseongdo-seoul-city-hall-estimate",
+      "label": "서울시청 · 현대 위치 추정",
+      "modernPlaceId": "seoul-city-hall",
+      "mapId": "nmk-shinsu19997-img07-doseongdo-original",
+      "collectionNumber": "신수19997",
+      "edition": "신유본(1861)",
+      "assetPath": "/assets/official/nmk-shinsu19997-doseongdo-original.jpg",
+      "assetSha256": "F59EDC35FF78E57A7A4EB08BC6790597308C4E8F1664A0DF43F324776BED802A",
+      "assetSpace": {
+        "width": 3000,
+        "height": 1825,
+        "origin": "top-left"
+      },
+      "point": {
+        "unit": "normalized",
+        "x": 0.388667,
+        "y": 0.649315
+      },
+      "bounds": {
+        "unit": "normalized",
+        "x": 0.365333,
+        "y": 0.6,
+        "width": 0.046667,
+        "height": 0.09863
+      },
+      "registrationStatus": "approximate",
+      "reviewedAt": "2026-07-11",
+      "reviewNote": "현 서울시청 일대의 조선시대 군기시 유구와 광화문-숭례문 축을 참고해 도성도에 투영한 낮은 신뢰도의 현대 위치 추정점입니다. 서울시청의 역사 좌표나 정확한 일치점이 아닙니다."
+    }
+  ],
+  "api": {
+    "datasetId": "15159017",
+    "datasetUrl": "https://www.data.go.kr/data/15159017/openapi.do",
+    "endpointBase": "https://apis.data.go.kr/1371027/openapi",
+    "status": "synced",
+    "record": {
+      "id": "PS0100100101101999700000",
+      "name": "대동여지도",
+      "nameHanja": "大東輿地圖",
+      "creator": "김정호(金正浩)",
+      "collectionNumber": "신수19997",
+      "museum": "국립중앙박물관",
+      "nationalityPeriod": "한국 · 조선",
+      "material": "지",
+      "sizeInfo": "세로 30.6cm, 가로 20.0cm",
+      "description": "대동여지도는 1861년 김정호가 손수 제작하고 목판으로 인출하여 간행한 전국지도로, 이 지도는 신유본(1861)이다. 대동여지도는 우리나라 전체를 남북 120리 간격으로 구분해 22층으로 나누고, 각 층마다 동서 방향의 지도를 수록했다. 각 층의 지도는 1권의 책으로 묶어 동서 80리를 기준으로 접고 펼 수 있도록 만들어 휴대가 간편하고, 보기 쉽게 만들었다. 이렇게 제작된 22권의 책을 모두 펼쳐 연결하면 세로 약6.7m, 가로 약3.8m의 초대형 지도가 된다. 대동여지도에는 산줄기와 물줄기가 상세하고 정확하게 표현되어 있고, 다양한 정보가 오늘날의 지도처럼 기호로 표기되어 있다. 상세하게 기재된 교통로에는 10리마다 점을 찍어 여행의 편의를 도모했다. 이는 근대적인 측량 기술로 제작된 지도와 비교할 때에도 손색이 없는 것으로, 우리 민족의 지도 제작 전통이 집대성된 최고의 지도라고 할 수 있다.",
+      "imageCount": 129,
+      "rightsCode": "1",
+      "syncedAt": "2026-07-11T14:40:30.123Z"
+    }
+  }
+}
