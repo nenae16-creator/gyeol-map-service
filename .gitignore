@@ -10,4 +10,15 @@ devserver.log
 .playwright-mcp/
 .serena/
 tmp/
+# QA 캡처, 백업 자산과 미사용 콘셉트 렌더
 gyeol-*.png
+
+# 앱에서 실제 사용하는 합성 지도 자산
+!/public/assets/gyeol-service-desk-plate.png
+!/public/assets/gyeol-clean-desk-plate.png
+!/public/assets/gyeol-opening-desk-plate-v2.png
+!/public/assets/gyeol-static-desk-plate.png
+!/public/assets/gyeol-folded-route-base-v5.png
+!/public/assets/gyeol-fold-panel-*.png
+
+.vercel/

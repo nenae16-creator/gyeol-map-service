@@ -84,6 +84,14 @@ npm run qa
 
 `npm run qa`는 데스크톱·모바일에서 질문, 해독, 근거 결과, 체험 진입·복귀, 미지원 위치와 위치 권한 거부 상태를 캡처하고 `tmp/qa/`에 결과를 저장합니다.
 
+## 배포
+
+Vercel 프로덕션:
+
+```text
+https://gyeol-map-service.vercel.app
+```
+
 ## 구현 구조
 
 - `src/components/GyeolServiceExperience.tsx`: 질문, 현재 위치, 해독, 근거 결과, 체험 연결

@@ -1,0 +1,25 @@
+# 로컬 검증·백업 결과물
+tmp/
+backups/
+.playwright-mcp/
+.serena/
+devserver.log
+/gyeol-*.png
+
+# 로컬 비밀값과 Vercel 연결 메타데이터
+.env
+.env.*
+.vercel/
+
+# 앱이 참조하지 않는 이미지 시안
+/public/assets/gyeol-centered-map-cutout.png
+/public/assets/gyeol-concept-03-ink-road.png
+/public/assets/gyeol-folded-route-cutout-v2.png
+/public/assets/gyeol-folded-route-cutout-v3.png
+/public/assets/gyeol-folded-route-cutout-v4.png
+/public/assets/gyeol-folded-route-cutout.png
+/public/assets/gyeol-folded-route.png
+/public/assets/gyeol-opening-full-map-scene.png
+/public/assets/gyeol-route-ink-overlay-draft.png
+/public/assets/gyeol-route-ink-overlay-draft2.png
+/public/assets/gyeol-route-ink-overlay.png

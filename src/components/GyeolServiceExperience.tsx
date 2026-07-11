@@ -31,13 +31,14 @@ import type {
   GyeolResultEnvelope,
   SourceReference
 } from "../domain/gyeolEvidence";
+import { publicAssetUrl } from "../utils/publicAssetUrl";
 import { InteractiveDaedongMapIntro } from "./InteractiveDaedongMapIntro";
 import styles from "./GyeolServiceExperience.module.css";
 
 type ServiceStage = "idle" | "decoding" | "result" | "journey";
 
-const SERVICE_PLATE_URL = "/assets/gyeol-service-desk-plate.png";
-const MAP_URL = "/assets/daedongyeojido-idle-toned-v2.png";
+const SERVICE_PLATE_URL = publicAssetUrl("assets/gyeol-service-desk-plate.png");
+const MAP_URL = publicAssetUrl("assets/daedongyeojido-idle-toned-v2.png");
 
 const decodeSteps = [
   {
