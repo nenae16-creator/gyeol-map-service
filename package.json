@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "qa": "node scripts/qa-service.mjs",
+    "qa:production": "node scripts/qa-service.mjs production --url=https://gyeol-map-service.vercel.app --output=tmp/qa-production",
     "sync:emuseum": "node --env-file-if-exists=.env scripts/sync-emuseum.mjs",
     "verify:evidence": "node scripts/verify-evidence.mjs",
     "typecheck": "tsc --noEmit"
