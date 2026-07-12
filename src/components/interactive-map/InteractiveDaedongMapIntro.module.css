@@ -617,10 +617,10 @@
 
 .routeInkPath {
   fill: none;
-  stroke-linecap: round;
+  stroke-dasharray: 0.62 0.38;
+  stroke-linecap: butt;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
-  will-change: stroke-dashoffset;
 }
 
 .routeInkFeather {
@@ -631,6 +631,96 @@
 .routeInkCore {
   stroke: rgb(30 22 16 / 88%);
   stroke-width: clamp(5px, 0.56vw, 8px);
+}
+
+.routeRevealPath {
+  fill: none;
+  stroke: #fff;
+  stroke-width: clamp(22px, 1.85vw, 29px);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  will-change: stroke-dashoffset;
+}
+
+.routeTenRiMarks {
+  fill: none;
+  stroke: rgb(130 46 33 / 92%);
+  stroke-width: clamp(5px, 0.48vw, 7px);
+  stroke-dasharray: 0.08 9.92;
+  stroke-dashoffset: 0.08;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.routeMeasure {
+  position: absolute;
+  left: 31.5%;
+  top: 73.5%;
+  z-index: 8;
+  display: grid;
+  gap: 1px;
+  min-width: 154px;
+  margin: 0;
+  padding: 7px 10px 6px;
+  border: 1px solid rgb(93 54 31 / 52%);
+  background: rgb(230 210 171 / 92%);
+  box-shadow:
+    inset 0 0 0 1px rgb(249 235 205 / 42%),
+    0 5px 12px rgb(43 23 11 / 18%);
+  color: #493322;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(7px) rotate(-0.5deg);
+  transition:
+    opacity 420ms ease,
+    transform 560ms cubic-bezier(0.2, 0.72, 0.18, 1);
+}
+
+.intro[data-phase="unfolding"] .routeMeasure,
+.intro[data-phase="revealing"] .routeMeasure,
+.intro[data-phase="walking"] .routeMeasure,
+.intro[data-phase="arrived"] .routeMeasure {
+  opacity: 1;
+  transform: translateY(0) rotate(-0.5deg);
+}
+
+.routeMeasureSample,
+.routeMeasure strong,
+.routeMeasure small {
+  display: block;
+}
+
+.routeMeasureSample {
+  color: #2e2117;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(11px, 0.95vw, 15px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.03em;
+}
+
+.routeMeasureSample b {
+  margin-left: 3px;
+  color: #8b3024;
+  font-size: 0.72em;
+}
+
+.routeMeasure strong {
+  margin-top: 2px;
+  font-size: clamp(9px, 0.72vw, 11px);
+  letter-spacing: -0.02em;
+}
+
+.routeMeasure small {
+  color: #6d4a34;
+  font-size: clamp(7px, 0.55vw, 9px);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.routeMeasureHistoryMobile {
+  display: none;
 }
 
 .walker {
@@ -736,6 +826,53 @@
     width: clamp(34px, 10vw, 48px);
   }
 
+  .routeInkPath {
+    stroke-linecap: butt;
+  }
+
+  .routeInkFeather {
+    stroke-width: 6px;
+  }
+
+  .routeInkCore {
+    stroke-width: 2.75px;
+  }
+
+  .routeTenRiMarks {
+    stroke-width: 4px;
+  }
+
+  .routeMeasure {
+    left: 3.5%;
+    top: 3.5%;
+    min-width: 0;
+    max-width: 52%;
+    padding: 5px 7px;
+  }
+
+  .routeMeasureSample {
+    font-size: clamp(10px, 3.2vw, 13px);
+  }
+
+  .routeMeasure strong {
+    font-size: clamp(8px, 2.45vw, 10px);
+  }
+
+  .routeMeasure small {
+    display: block;
+    margin-top: 1px;
+    font-size: clamp(7px, 2.05vw, 8px);
+    line-height: 1.2;
+  }
+
+  .routeMeasureHistoryDesktop {
+    display: none;
+  }
+
+  .routeMeasureHistoryMobile {
+    display: inline;
+  }
+
   .detailMap {
     transition:
       top 720ms cubic-bezier(0.2, 0.72, 0.18, 1),
@@ -778,6 +915,17 @@
     max-width: 68%;
     padding: 4px 6px;
     font-size: clamp(8px, 2.35vw, 10px);
+    transition:
+      opacity 260ms ease,
+      visibility 260ms ease;
+  }
+
+  .intro[data-phase="unfolding"] .detailCredit,
+  .intro[data-phase="revealing"] .detailCredit,
+  .intro[data-phase="walking"] .detailCredit {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
   }
 }
 
@@ -787,6 +935,7 @@
   .detailMap,
   .foldPanel,
   .routeInk,
+  .routeMeasure,
   .walker,
   .arrivalStamp,
   .skipButton,

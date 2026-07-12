@@ -455,9 +455,66 @@ try {
   report.desktop.officialDoseongdoSrc = await page
     .getByRole("img", { name: /대동여지도 신유본 중 도성도/ })
     .getAttribute("src");
+  const routeSvg = page.locator(
+    'svg[data-route-distance-unit="experiential-ri"]',
+  );
+  const routeRiDashPaths = routeSvg.locator(
+    'path[data-route-kind="ri-dash"][data-distance-unit="1-ri"]',
+  );
+  const routeRevealPath = routeSvg.locator('path[data-route-kind="reveal"]');
+  const routeTenRiMarks = routeSvg.locator('path[data-route-kind="ten-ri"]');
+  report.desktop.routeDistanceRi = Number(
+    await routeSvg.getAttribute("data-route-distance-ri"),
+  );
+  report.desktop.routeDashPattern = await routeRiDashPaths.first().evaluate(
+    (path) => getComputedStyle(path).strokeDasharray,
+  );
+  report.desktop.routePathLengths = await routeRiDashPaths.evaluateAll((paths) =>
+    paths.map((path) => Number(path.getAttribute("pathLength"))),
+  );
+  report.desktop.routeTenRiPattern = await routeTenRiMarks.evaluate(
+    (path) => getComputedStyle(path).strokeDasharray,
+  );
+  report.desktop.routeTenRiOffset = await routeTenRiMarks.evaluate(
+    (path) => Number.parseFloat(getComputedStyle(path).strokeDashoffset),
+  );
   report.desktop.routeIsVector =
-    (await page.locator('svg[viewBox="0 0 1487 1058"] path').count()) === 2;
-  await page.waitForTimeout(2200);
+    (await routeRiDashPaths.count()) === 2 &&
+    (await routeRevealPath.count()) === 1 &&
+    (await routeTenRiMarks.count()) === 1;
+  report.desktop.routeUsesRiDashes =
+    report.desktop.routeDistanceRi >= 10 &&
+    /0\.62(?:px)?[,\s]+0\.38/.test(report.desktop.routeDashPattern) &&
+    report.desktop.routePathLengths.every(
+      (length) => length === report.desktop.routeDistanceRi,
+    );
+  report.desktop.routeUsesTenRiMarks =
+    /0\.08(?:px)?[,\s]+9\.92/.test(report.desktop.routeTenRiPattern) &&
+    Math.abs(report.desktop.routeTenRiOffset - 0.08) < 0.001;
+  await page
+    .locator('[data-phase="revealing"]')
+    .waitFor({ state: "attached", timeout: 30000 });
+  const routeMeasure = page.locator('aside[aria-label="체험 거리 눈금 안내"]');
+  await page.waitForFunction(
+    () => {
+      const note = document.querySelector('aside[aria-label="체험 거리 눈금 안내"]');
+      return note && Number.parseFloat(getComputedStyle(note).opacity) > 0.9;
+    },
+    undefined,
+    { timeout: 10000 },
+  );
+  report.desktop.routeMeasureVisible = await routeMeasure.evaluate(
+    (note) => Number.parseFloat(getComputedStyle(note).opacity) > 0.9,
+  );
+  report.desktop.routeMeasureText = (await routeMeasure.textContent())
+    ?.replace(/\s+/g, " ")
+    .trim();
+  report.desktop.routeRevealInProgress = await routeRevealPath.evaluate((path) => {
+    const style = getComputedStyle(path);
+    const offset = Number.parseFloat(style.strokeDashoffset);
+    const length = Number.parseFloat(style.strokeDasharray);
+    return offset > 0 && offset < length;
+  });
   await capture(page, `service-journey-${version}.png`, "desktop.journey");
 
   const skipButton = page.getByRole("button", { name: "이동 건너뛰기" });
@@ -468,6 +525,9 @@ try {
     .locator('[data-phase="arrived"]')
     .waitFor({ state: "attached", timeout: 15000 });
   report.desktop.journeyArrived = true;
+  report.desktop.routeRevealComplete = await routeRevealPath.evaluate(
+    (path) => Math.abs(Number.parseFloat(getComputedStyle(path).strokeDashoffset)) < 0.1,
+  );
   await page
     .locator('li[aria-current="location"] strong')
     .waitFor({ state: "visible" });
@@ -582,6 +642,18 @@ try {
     timeout: 15000,
   });
   report.mobile.journeyArrived = true;
+  const mobileRouteMeasure = mobilePage.locator(
+    'aside[aria-label="체험 거리 눈금 안내"]',
+  );
+  report.mobile.routeMeasureVisible = await mobileRouteMeasure.evaluate(
+    (note) => Number.parseFloat(getComputedStyle(note).opacity) > 0.9,
+  );
+  report.mobile.routeMeasureText = (await mobileRouteMeasure.textContent())
+    ?.replace(/\s+/g, " ")
+    .trim();
+  report.mobile.compactTenRiNoteVisible = await mobilePage
+    .getByText("● 원지도 10리점", { exact: true })
+    .isVisible();
   await mobilePage
     .locator('figure[aria-labelledby="doseongdo-korean-title"]')
     .waitFor({
@@ -650,6 +722,14 @@ try {
     desktopJourneyAssetsReady: report.desktop.journeyAssetsReady === true,
     desktopJourneyArrived: report.desktop.journeyArrived === true,
     desktopVectorRoute: report.desktop.routeIsVector === true,
+    desktopRiDashRoute: report.desktop.routeUsesRiDashes === true,
+    desktopTenRiMarks: report.desktop.routeUsesTenRiMarks === true,
+    desktopRouteMeasure:
+      report.desktop.routeMeasureVisible === true &&
+      /한 획 = 체험 거리 1리/.test(report.desktop.routeMeasureText ?? "") &&
+      /10리마다 점/.test(report.desktop.routeMeasureText ?? ""),
+    desktopRouteRevealInProgress: report.desktop.routeRevealInProgress === true,
+    desktopRouteRevealComplete: report.desktop.routeRevealComplete === true,
     desktopArrived: Boolean(report.desktop.activeDoseongdoLocation),
     desktopSourceLink: /^https:\/\/www\.museum\.go\.kr\//.test(
       report.desktop.detailSourceLink ?? "",
@@ -673,6 +753,10 @@ try {
     mobileJourneyButton: report.mobile.journeyButtonVisible === true,
     mobileJourneyAssetsReady: report.mobile.journeyAssetsReady === true,
     mobileJourneyArrived: report.mobile.journeyArrived === true,
+    mobileRouteMeasure:
+      report.mobile.routeMeasureVisible === true &&
+      /한 획 = 체험 거리 1리/.test(report.mobile.routeMeasureText ?? "") &&
+      report.mobile.compactTenRiNoteVisible === true,
     mobileArrived: Boolean(report.mobile.activeDoseongdoLocation),
     mobileNoHorizontalOverflow: [
       report.mobile.idleLayout,

@@ -77,6 +77,9 @@ const DETAIL_CROP = {
 } as const;
 const FOLD_CREASES = [228, 430, 605, 713, 847, 995, 1142, 1268, 1415] as const;
 const REQUIRED_ASSET_COUNT = 16;
+const ROUTE_REVEAL_MASK_ID = "journey-route-reveal-mask";
+// Service visualization only: one visible dash is one experiential ri, not a surveyed distance.
+const ROUTE_VISUAL_RI_SPACING = 34;
 
 type DetailLocation = {
   id: string;
@@ -355,9 +358,10 @@ function routePath(routePoints: Point[]) {
 const phaseText: Record<IntroPhase, string> = {
   idle: "가운데 대동여지도에서 한성부를 선택하세요.",
   positioning: "대동여지도를 왼쪽 여정 위치로 옮기고 있습니다.",
-  unfolding: "접이식 지도가 펼쳐지며 먹길이 번지고 있습니다.",
+  unfolding: "접이식 지도가 펼쳐지며 체험 거리 1리 단위의 먹길이 이어지고 있습니다.",
   revealing: "먹길 끝에서 국립중앙박물관 소장 대동여지도의 도성도를 확대하고 있습니다.",
-  walking: "김정호 캐릭터가 서비스가 구성한 먹길을 따라 한성부 권역 후보로 이동하고 있습니다.",
+  walking:
+    "김정호 캐릭터가 한 획을 체험 거리 1리로 표시한 먹길을 따라 한성부 권역 후보로 이동하고 있습니다.",
   arrived: "김정호 캐릭터가 도성도의 선택 위치 후보에 도착했습니다."
 };
 
@@ -465,6 +469,10 @@ export function InteractiveDaedongMapIntro({
   );
   const journeyRouteLength =
     journeyRouteDistances[journeyRouteDistances.length - 1] ?? 1;
+  const journeyVisualRiCount = Math.max(
+    10,
+    Math.round(journeyRouteLength / ROUTE_VISUAL_RI_SPACING)
+  );
   const journeyRoutePath = useMemo(
     () => routePath(journeyRoutePoints),
     [journeyRoutePoints]
@@ -525,7 +533,7 @@ export function InteractiveDaedongMapIntro({
 
     const q = gsap.utils.selector(root);
     const panels = q(`.${styles.foldPanel}`);
-    const routePaths = q(`.${styles.routeInkPath}`);
+    const routeRevealPaths = q(`.${styles.routeRevealPath}`);
 
     timelineRef.current?.kill();
     walkProgressRef.current.value = 0;
@@ -573,7 +581,7 @@ export function InteractiveDaedongMapIntro({
       autoAlpha: 0,
       filter: "blur(2.6px)"
     });
-    gsap.set(routePaths, { strokeDashoffset: journeyRouteLength });
+    gsap.set(routeRevealPaths, { strokeDashoffset: journeyRouteLength });
     gsap.set(panels, {
       autoAlpha: 0,
       xPercent: (index: number) =>
@@ -604,7 +612,7 @@ export function InteractiveDaedongMapIntro({
     if (!root) return;
 
     const q = gsap.utils.selector(root);
-    const routePaths = q(`.${styles.routeInkPath}`);
+    const routeRevealPaths = q(`.${styles.routeRevealPath}`);
     timelineRef.current?.kill();
     walkProgressRef.current.value = 1;
     setPhase("arrived");
@@ -632,7 +640,7 @@ export function InteractiveDaedongMapIntro({
       autoAlpha: 1,
       filter: "blur(0px)"
     });
-    gsap.set(routePaths, { strokeDashoffset: 0 });
+    gsap.set(routeRevealPaths, { strokeDashoffset: 0 });
     measureRouteFrame();
     placeWalker(1);
     gsap.set(walkerRef.current, { autoAlpha: 1, scale: 1 });
@@ -652,7 +660,7 @@ export function InteractiveDaedongMapIntro({
 
     const q = gsap.utils.selector(root);
     const panels = q(`.${styles.foldPanel}`);
-    const routePaths = q(`.${styles.routeInkPath}`);
+    const routeRevealPaths = q(`.${styles.routeRevealPath}`);
 
     timelineRef.current?.kill();
     walkProgressRef.current.value = 0;
@@ -753,7 +761,7 @@ export function InteractiveDaedongMapIntro({
       )
       .set(routeInkRef.current, { autoAlpha: 0.96 }, 3.9)
       .to(
-        routePaths,
+        routeRevealPaths,
         {
           strokeDashoffset: 0,
           duration: 2.35,
@@ -1092,26 +1100,73 @@ export function InteractiveDaedongMapIntro({
           ref={routeInkRef}
           className={styles.routeInk}
           aria-hidden="true"
+          data-route-distance-unit="experiential-ri"
+          data-route-distance-ri={journeyVisualRiCount}
           viewBox={`0 0 ${SCENE_FRAME.width} ${SCENE_FRAME.height}`}
           preserveAspectRatio="none"
         >
-          <path
-            className={`${styles.routeInkPath} ${styles.routeInkFeather}`}
-            d={journeyRoutePath}
-            style={{
-              strokeDasharray: journeyRouteLength,
-              strokeDashoffset: journeyRouteLength
-            }}
-          />
-          <path
-            className={`${styles.routeInkPath} ${styles.routeInkCore}`}
-            d={journeyRoutePath}
-            style={{
-              strokeDasharray: journeyRouteLength,
-              strokeDashoffset: journeyRouteLength
-            }}
-          />
+          <defs>
+            <mask
+              id={ROUTE_REVEAL_MASK_ID}
+              x="0"
+              y="0"
+              width={SCENE_FRAME.width}
+              height={SCENE_FRAME.height}
+              maskUnits="userSpaceOnUse"
+              maskContentUnits="userSpaceOnUse"
+            >
+              <path
+                className={styles.routeRevealPath}
+                data-route-kind="reveal"
+                d={journeyRoutePath}
+                style={{
+                  strokeDasharray: journeyRouteLength,
+                  strokeDashoffset: journeyRouteLength
+                }}
+              />
+            </mask>
+          </defs>
+
+          <g mask={`url(#${ROUTE_REVEAL_MASK_ID})`}>
+            <path
+              className={`${styles.routeInkPath} ${styles.routeInkFeather}`}
+              data-route-kind="ri-dash"
+              data-distance-unit="1-ri"
+              d={journeyRoutePath}
+              pathLength={journeyVisualRiCount}
+            />
+            <path
+              className={`${styles.routeInkPath} ${styles.routeInkCore}`}
+              data-route-kind="ri-dash"
+              data-distance-unit="1-ri"
+              d={journeyRoutePath}
+              pathLength={journeyVisualRiCount}
+            />
+            <path
+              className={styles.routeTenRiMarks}
+              data-route-kind="ten-ri"
+              d={journeyRoutePath}
+              pathLength={journeyVisualRiCount}
+            />
+          </g>
         </svg>
+
+        <aside
+          className={styles.routeMeasure}
+          aria-label="체험 거리 눈금 안내"
+          aria-hidden={phase === "idle" || phase === "positioning"}
+        >
+          <span className={styles.routeMeasureSample} aria-hidden="true">
+            — — — <b>●</b>
+          </span>
+          <strong>한 획 = 체험 거리 1리</strong>
+          <small>
+            <span className={styles.routeMeasureHistoryDesktop}>
+              ● 원본 대동여지도는 도로에 10리마다 점
+            </span>
+            <span className={styles.routeMeasureHistoryMobile}>● 원지도 10리점</span>
+          </small>
+        </aside>
 
         <div ref={walkerRef} className={styles.walker} aria-hidden="true">
           <img
