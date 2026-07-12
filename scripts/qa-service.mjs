@@ -456,48 +456,67 @@ try {
     .getByRole("img", { name: /대동여지도 신유본 중 도성도/ })
     .getAttribute("src");
   const routeSvg = page.locator(
-    'svg[data-route-distance-unit="experiential-ri"]',
+    'svg[data-route-distance-unit="experience-step"]',
   );
-  const routeRiDashPaths = routeSvg.locator(
-    'path[data-route-kind="ri-dash"][data-distance-unit="1-ri"]',
+  const routeStepDashPaths = routeSvg.locator(
+    'path[data-route-kind="step-dash"][data-distance-unit="1-step"]',
   );
   const routeRevealPath = routeSvg.locator('path[data-route-kind="reveal"]');
-  const routeTenRiMarks = routeSvg.locator('path[data-route-kind="ten-ri"]');
-  report.desktop.routeDistanceRi = Number(
-    await routeSvg.getAttribute("data-route-distance-ri"),
+  const routeMarkers = page.locator('[data-route-marker-step]');
+  report.desktop.routeStepCount = Number(
+    await routeSvg.getAttribute("data-route-step-count"),
   );
-  report.desktop.routeDashPattern = await routeRiDashPaths.first().evaluate(
+  report.desktop.routeDashPattern = await routeStepDashPaths.first().evaluate(
     (path) => getComputedStyle(path).strokeDasharray,
   );
-  report.desktop.routePathLengths = await routeRiDashPaths.evaluateAll((paths) =>
-    paths.map((path) => Number(path.getAttribute("pathLength"))),
+  report.desktop.routePathLengths = await routeStepDashPaths.evaluateAll(
+    (paths) => paths.map((path) => Number(path.getAttribute("pathLength"))),
   );
-  report.desktop.routeTenRiPattern = await routeTenRiMarks.evaluate(
-    (path) => getComputedStyle(path).strokeDasharray,
+  report.desktop.routeMarkerSteps = await routeMarkers.evaluateAll(
+    (markers) =>
+      markers.map((marker) =>
+        Number(marker.getAttribute("data-route-marker-step")),
+      ),
   );
-  report.desktop.routeTenRiOffset = await routeTenRiMarks.evaluate(
-    (path) => Number.parseFloat(getComputedStyle(path).strokeDashoffset),
-  );
+  const expectedMarkerSteps = [];
+  for (let step = 10; step < report.desktop.routeStepCount; step += 10) {
+    expectedMarkerSteps.push(step);
+  }
   report.desktop.routeIsVector =
-    (await routeRiDashPaths.count()) === 2 &&
-    (await routeRevealPath.count()) === 1 &&
-    (await routeTenRiMarks.count()) === 1;
-  report.desktop.routeUsesRiDashes =
-    report.desktop.routeDistanceRi >= 10 &&
+    (await routeStepDashPaths.count()) === 2 &&
+    (await routeRevealPath.count()) === 1;
+  report.desktop.routeUsesStepDashes =
+    report.desktop.routeStepCount >= 10 &&
     /0\.62(?:px)?[,\s]+0\.38/.test(report.desktop.routeDashPattern) &&
     report.desktop.routePathLengths.every(
-      (length) => length === report.desktop.routeDistanceRi,
+      (length) => length === report.desktop.routeStepCount,
     );
-  report.desktop.routeUsesTenRiMarks =
-    /0\.08(?:px)?[,\s]+9\.92/.test(report.desktop.routeTenRiPattern) &&
-    Math.abs(report.desktop.routeTenRiOffset - 0.08) < 0.001;
+  report.desktop.routeMarkersMatch =
+    JSON.stringify(report.desktop.routeMarkerSteps) ===
+    JSON.stringify(expectedMarkerSteps);
   await page
     .locator('[data-phase="revealing"]')
     .waitFor({ state: "attached", timeout: 30000 });
-  const routeMeasure = page.locator('aside[aria-label="체험 거리 눈금 안내"]');
   await page.waitForFunction(
     () => {
-      const note = document.querySelector('aside[aria-label="체험 거리 눈금 안내"]');
+      const path = document.querySelector('path[data-route-kind="reveal"]');
+      if (!path) return false;
+      const style = getComputedStyle(path);
+      const offset = Number.parseFloat(style.strokeDashoffset);
+      const length = Number.parseFloat(style.strokeDasharray);
+      return offset > 0.1 && offset < length - 0.1;
+    },
+    undefined,
+    { timeout: 10000 },
+  );
+  const routeMeasure = page.locator(
+    'aside[aria-label="체험 눈금과 거리 상태 안내"]',
+  );
+  await page.waitForFunction(
+    () => {
+      const note = document.querySelector(
+        'aside[aria-label="체험 눈금과 거리 상태 안내"]',
+      );
       return note && Number.parseFloat(getComputedStyle(note).opacity) > 0.9;
     },
     undefined,
@@ -517,6 +536,63 @@ try {
   });
   await capture(page, `service-journey-${version}.png`, "desktop.journey");
 
+  await page
+    .locator('[data-phase="walking"]')
+    .waitFor({ state: "attached", timeout: 15000 });
+  const routeProgress = page.getByRole("progressbar", { name: "체험 경로 진행" });
+  await page.waitForFunction(
+    () => {
+      const progress = document.querySelector('[role="progressbar"]');
+      if (!progress) return false;
+      const current = Number(progress.getAttribute("aria-valuenow"));
+      const maximum = Number(progress.getAttribute("aria-valuemax"));
+      return current > 0 && current < maximum;
+    },
+    undefined,
+    { timeout: 10000 },
+  );
+  const firstProgressStep = Number(
+    await routeProgress.getAttribute("aria-valuenow"),
+  );
+  await page.waitForFunction(
+    (previousStep) => {
+      const progress = document.querySelector('[role="progressbar"]');
+      return Number(progress?.getAttribute("aria-valuenow")) > previousStep;
+    },
+    firstProgressStep,
+    { timeout: 5000 },
+  );
+  await page.waitForFunction(
+    () => {
+      const milestones = document.querySelector(
+        'ol[aria-label="체험 눈금 10칸 단위 이정표"]',
+      );
+      return milestones && Number.parseFloat(getComputedStyle(milestones).opacity) > 0.9;
+    },
+    undefined,
+    { timeout: 5000 },
+  );
+  report.desktop.routeProgressStep = Number(
+    await routeProgress.getAttribute("aria-valuenow"),
+  );
+  report.desktop.routeProgressMax = Number(
+    await routeProgress.getAttribute("aria-valuemax"),
+  );
+  report.desktop.routeProgressPercent = Number(
+    await routeProgress.getAttribute("data-progress-percent"),
+  );
+  report.desktop.routeProgressText = await routeProgress.getAttribute(
+    "aria-valuetext",
+  );
+  report.desktop.routeProgressIncreases =
+    report.desktop.routeProgressStep > firstProgressStep;
+  report.desktop.routeMarkersVisible = true;
+  await capture(
+    page,
+    `service-journey-progress-${version}.png`,
+    "desktop.journey.progress",
+  );
+
   const skipButton = page.getByRole("button", { name: "이동 건너뛰기" });
   if (await skipButton.isVisible()) {
     await skipButton.click();
@@ -526,8 +602,18 @@ try {
     .waitFor({ state: "attached", timeout: 15000 });
   report.desktop.journeyArrived = true;
   report.desktop.routeRevealComplete = await routeRevealPath.evaluate(
-    (path) => Math.abs(Number.parseFloat(getComputedStyle(path).strokeDashoffset)) < 0.1,
+    (path) =>
+      Math.abs(Number.parseFloat(getComputedStyle(path).strokeDashoffset)) < 0.1,
   );
+  report.desktop.routeProgressComplete =
+    Number(await routeProgress.getAttribute("aria-valuenow")) ===
+      report.desktop.routeStepCount &&
+    Number(await routeProgress.getAttribute("data-progress-percent")) === 100 &&
+    /100%/.test((await routeProgress.getAttribute("aria-valuetext")) ?? "");
+  report.desktop.arrivalStepText = await page
+    .locator('[data-phase="arrived"]')
+    .getByText(`총 ${report.desktop.routeStepCount}칸`, { exact: true })
+    .textContent();
   await page
     .locator('li[aria-current="location"] strong')
     .waitFor({ state: "visible" });
@@ -643,7 +729,7 @@ try {
   });
   report.mobile.journeyArrived = true;
   const mobileRouteMeasure = mobilePage.locator(
-    'aside[aria-label="체험 거리 눈금 안내"]',
+    'aside[aria-label="체험 눈금과 거리 상태 안내"]',
   );
   report.mobile.routeMeasureVisible = await mobileRouteMeasure.evaluate(
     (note) => Number.parseFloat(getComputedStyle(note).opacity) > 0.9,
@@ -651,9 +737,28 @@ try {
   report.mobile.routeMeasureText = (await mobileRouteMeasure.textContent())
     ?.replace(/\s+/g, " ")
     .trim();
-  report.mobile.compactTenRiNoteVisible = await mobilePage
-    .getByText("● 원지도 10리점", { exact: true })
+  report.mobile.routeCautionVisible = await mobilePage
+    .getByText("실제 거리 아님", { exact: true })
     .isVisible();
+  const mobileRouteProgress = mobilePage.getByRole("progressbar", {
+    name: "체험 경로 진행",
+  });
+  report.mobile.routeProgressComplete =
+    Number(await mobileRouteProgress.getAttribute("aria-valuenow")) ===
+      Number(await mobileRouteProgress.getAttribute("aria-valuemax")) &&
+    Number(await mobileRouteProgress.getAttribute("data-progress-percent")) === 100 &&
+    /100%/.test((await mobileRouteProgress.getAttribute("aria-valuetext")) ?? "");
+  report.mobile.routeProgressMax = Number(
+    await mobileRouteProgress.getAttribute("aria-valuemax"),
+  );
+  report.mobile.routeArrivalSummaryVisible = await mobilePage
+    .getByText("10 · 20 → 총 30칸", { exact: true })
+    .isVisible();
+  report.mobile.arrivalStepText = await mobilePage
+    .getByText(`총 ${await mobileRouteProgress.getAttribute("aria-valuemax")}칸`, {
+      exact: true,
+    })
+    .textContent();
   await mobilePage
     .locator('figure[aria-labelledby="doseongdo-korean-title"]')
     .waitFor({
@@ -722,14 +827,44 @@ try {
     desktopJourneyAssetsReady: report.desktop.journeyAssetsReady === true,
     desktopJourneyArrived: report.desktop.journeyArrived === true,
     desktopVectorRoute: report.desktop.routeIsVector === true,
-    desktopRiDashRoute: report.desktop.routeUsesRiDashes === true,
-    desktopTenRiMarks: report.desktop.routeUsesTenRiMarks === true,
+    desktopStepDashRoute:
+      report.desktop.routeUsesStepDashes === true &&
+      report.desktop.routeStepCount === 30,
+    desktopStepMarkers:
+      report.desktop.routeMarkersMatch === true &&
+      report.desktop.routeMarkersVisible === true &&
+      JSON.stringify(report.desktop.routeMarkerSteps) === JSON.stringify([10, 20]),
     desktopRouteMeasure:
       report.desktop.routeMeasureVisible === true &&
-      /한 획 = 체험 거리 1리/.test(report.desktop.routeMeasureText ?? "") &&
-      /10리마다 점/.test(report.desktop.routeMeasureText ?? ""),
+      /한 획 = 체험 눈금 1칸/.test(report.desktop.routeMeasureText ?? "") &&
+      /현대 좌표 거리\s*산출 전/.test(report.desktop.routeMeasureText ?? "") &&
+      /고지도 노정 거리\s*근거 확인 중/.test(
+        report.desktop.routeMeasureText ?? "",
+      ) &&
+      /체험 눈금은 실제 거리값이 아닙니다/.test(
+        report.desktop.routeMeasureText ?? "",
+      ) &&
+      /원본 대동여지도 도로는 10리마다 점/.test(
+        report.desktop.routeMeasureText ?? "",
+      ) &&
+      !/체험 거리 1리/.test(report.desktop.routeMeasureText ?? ""),
+    desktopRouteProgress:
+      report.desktop.routeProgressIncreases === true &&
+      report.desktop.routeProgressStep > 0 &&
+      report.desktop.routeProgressStep < report.desktop.routeProgressMax &&
+      report.desktop.routeProgressPercent > 0 &&
+      report.desktop.routeProgressPercent < 100 &&
+      report.desktop.routeProgressPercent ===
+        Math.round(
+          (report.desktop.routeProgressStep / report.desktop.routeProgressMax) * 100,
+        ) &&
+      /칸 · \d+%/.test(report.desktop.routeProgressText ?? ""),
     desktopRouteRevealInProgress: report.desktop.routeRevealInProgress === true,
     desktopRouteRevealComplete: report.desktop.routeRevealComplete === true,
+    desktopRouteProgressComplete: report.desktop.routeProgressComplete === true,
+    desktopArrivalStep:
+      report.desktop.routeStepCount === 30 &&
+      report.desktop.arrivalStepText === "총 30칸",
     desktopArrived: Boolean(report.desktop.activeDoseongdoLocation),
     desktopSourceLink: /^https:\/\/www\.museum\.go\.kr\//.test(
       report.desktop.detailSourceLink ?? "",
@@ -755,8 +890,15 @@ try {
     mobileJourneyArrived: report.mobile.journeyArrived === true,
     mobileRouteMeasure:
       report.mobile.routeMeasureVisible === true &&
-      /한 획 = 체험 거리 1리/.test(report.mobile.routeMeasureText ?? "") &&
-      report.mobile.compactTenRiNoteVisible === true,
+      /한 획 = 체험 눈금 1칸/.test(report.mobile.routeMeasureText ?? "") &&
+      /실제 거리 아님/.test(report.mobile.routeMeasureText ?? "") &&
+      report.mobile.routeCautionVisible === true,
+    mobileRouteProgressComplete:
+      report.mobile.routeProgressComplete === true &&
+      report.mobile.routeProgressMax === 30,
+    mobileArrivalStep:
+      report.mobile.arrivalStepText === "총 30칸" &&
+      report.mobile.routeArrivalSummaryVisible === true,
     mobileArrived: Boolean(report.mobile.activeDoseongdoLocation),
     mobileNoHorizontalOverflow: [
       report.mobile.idleLayout,

@@ -643,26 +643,67 @@
   will-change: stroke-dashoffset;
 }
 
-.routeTenRiMarks {
-  fill: none;
-  stroke: rgb(130 46 33 / 92%);
-  stroke-width: clamp(5px, 0.48vw, 7px);
-  stroke-dasharray: 0.08 9.92;
-  stroke-dashoffset: 0.08;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
+.routeMilestones {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 360ms ease;
+}
+
+.intro[data-phase="walking"] .routeMilestones,
+.intro[data-phase="arrived"] .routeMilestones {
+  opacity: 1;
+}
+
+.routeMilestones li {
+  position: absolute;
+  left: var(--route-marker-x);
+  top: var(--route-marker-y);
+  transform: translate(-50%, -50%);
+}
+
+.routeMilestones li > span {
+  display: block;
+  width: clamp(8px, 0.75vw, 11px);
+  aspect-ratio: 1;
+  border: 2px solid #eee0bd;
+  border-radius: 50%;
+  background: #913126;
+  box-shadow:
+    0 0 0 2px rgb(112 36 28 / 78%),
+    0 3px 7px rgb(34 18 9 / 35%);
+}
+
+.routeMilestones li > b {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 7px);
+  padding: 2px 5px;
+  border: 1px solid rgb(104 61 34 / 58%);
+  background: rgb(231 212 174 / 96%);
+  box-shadow: 0 3px 8px rgb(43 22 10 / 22%);
+  color: #713025;
+  font-size: clamp(8px, 0.68vw, 10px);
+  line-height: 1.15;
+  white-space: nowrap;
+  transform: translateX(-50%);
 }
 
 .routeMeasure {
   position: absolute;
-  left: 31.5%;
-  top: 73.5%;
+  right: 57.2%;
+  top: 71.5%;
   z-index: 8;
   display: grid;
-  gap: 1px;
-  min-width: 154px;
+  gap: 3px;
+  width: clamp(205px, 15.5vw, 230px);
   margin: 0;
-  padding: 7px 10px 6px;
+  padding: 8px 10px 7px;
   border: 1px solid rgb(93 54 31 / 52%);
   background: rgb(230 210 171 / 92%);
   box-shadow:
@@ -708,13 +749,105 @@
 
 .routeMeasure strong {
   margin-top: 2px;
-  font-size: clamp(9px, 0.72vw, 11px);
+  font-size: clamp(10px, 0.76vw, 12px);
   letter-spacing: -0.02em;
+}
+
+.routeProgress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid rgb(104 68 42 / 25%);
+}
+
+.routeProgress > span,
+.routeProgress > b {
+  font-size: clamp(9px, 0.68vw, 11px);
+  line-height: 1.2;
+}
+
+.routeProgress > span {
+  color: #674a35;
+  font-weight: 800;
+}
+
+.routeProgress > b {
+  color: #742e25;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.routeProgress > i {
+  grid-column: 1 / -1;
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(77 54 35 / 22%);
+  box-shadow: inset 0 1px 2px rgb(46 25 12 / 22%);
+}
+
+.routeProgress > i > span {
+  display: block;
+  width: var(--journey-progress, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f241b, #913126);
+  transition: width 180ms linear;
+}
+
+.routeDistanceStatus {
+  display: grid;
+  gap: 1px;
+  margin: 1px 0 0;
+  padding-top: 3px;
+  border-top: 1px solid rgb(104 68 42 / 20%);
+}
+
+.routeDistanceStatus > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.routeDistanceStatus dt,
+.routeDistanceStatus dd {
+  font-size: clamp(9px, 0.62vw, 10px);
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.routeDistanceStatus dt {
+  color: #614a38;
+}
+
+.routeDistanceStatus dd {
+  margin: 0;
+  color: #7e3228;
+}
+
+.routeDistanceCaution {
+  margin: 0;
+  color: #792c24;
+  font-size: clamp(9px, 0.62vw, 10px);
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.routeDistanceCautionMobile,
+.routeArrivalSummary {
+  display: none;
+}
+
+.routeDistanceMobileStatus {
+  display: none;
 }
 
 .routeMeasure small {
   color: #6d4a34;
-  font-size: clamp(7px, 0.55vw, 9px);
+  font-size: clamp(9px, 0.62vw, 10px);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -746,6 +879,50 @@
   max-width: none;
 }
 
+.walkerProgress {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 7px);
+  z-index: 2;
+  display: grid;
+  min-width: 62px;
+  padding: 4px 6px 3px;
+  border: 1px solid rgb(91 53 31 / 62%);
+  background: rgb(235 218 182 / 96%);
+  box-shadow: 0 5px 10px rgb(40 20 9 / 28%);
+  color: #512e20;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-50%) translateY(4px);
+  transition:
+    opacity 220ms ease,
+    transform 280ms ease;
+}
+
+.intro[data-phase="walking"] .walkerProgress {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.walkerProgress b,
+.walkerProgress small {
+  display: block;
+  line-height: 1.1;
+}
+
+.walkerProgress b {
+  font-size: clamp(8px, 0.68vw, 10px);
+  font-weight: 900;
+}
+
+.walkerProgress small {
+  margin-top: 1px;
+  color: #8b3024;
+  font-size: clamp(7px, 0.58vw, 9px);
+  font-weight: 900;
+}
+
 .arrivalStamp {
   position: absolute;
   left: var(--arrival-x, 63.8%);
@@ -764,6 +941,22 @@
   pointer-events: none;
   transform: translate(-50%, -50%);
   mix-blend-mode: multiply;
+}
+
+.arrivalStamp strong,
+.arrivalStamp small {
+  display: block;
+  line-height: 1.05;
+}
+
+.arrivalStamp strong {
+  font-size: inherit;
+}
+
+.arrivalStamp small {
+  margin-top: 2px;
+  font-size: 0.62em;
+  font-weight: 900;
 }
 
 .skipButton,
@@ -838,31 +1031,138 @@
     stroke-width: 2.75px;
   }
 
-  .routeTenRiMarks {
-    stroke-width: 4px;
+  .routeMilestones li > span {
+    width: 6px;
+    border-width: 1px;
+    box-shadow:
+      0 0 0 1px rgb(112 36 28 / 78%),
+      0 2px 5px rgb(34 18 9 / 30%);
+  }
+
+  .routeMilestones li > b {
+    bottom: calc(100% + 5px);
+    padding: 1px 3px;
+    font-size: 10px;
   }
 
   .routeMeasure {
+    right: auto;
     left: 3.5%;
     top: 3.5%;
+    gap: 1px;
+    width: 40%;
     min-width: 0;
-    max-width: 52%;
+    max-width: 160px;
     padding: 5px 7px;
   }
 
   .routeMeasureSample {
-    font-size: clamp(10px, 3.2vw, 13px);
+    display: none;
   }
 
   .routeMeasure strong {
-    font-size: clamp(8px, 2.45vw, 10px);
+    font-size: 10px;
   }
 
   .routeMeasure small {
-    display: block;
+    display: none;
+  }
+
+  .routeProgress {
+    gap: 1px 5px;
     margin-top: 1px;
-    font-size: clamp(7px, 2.05vw, 8px);
+    padding-top: 2px;
+  }
+
+  .routeProgress > span,
+  .routeProgress > b {
+    font-size: 10px;
+  }
+
+  .routeProgress > i {
+    height: 3px;
+  }
+
+  .routeDistanceStatus {
+    display: none;
+  }
+
+  .routeDistanceMobileStatus {
+    display: block;
+    margin: 1px 0 0;
+    color: #614a38;
+    font-size: 10px;
+    font-weight: 800;
     line-height: 1.2;
+  }
+
+  .routeDistanceCaution {
+    font-size: 10px;
+  }
+
+  .routeDistanceCautionDesktop {
+    display: none;
+  }
+
+  .routeDistanceCautionMobile {
+    display: inline;
+  }
+
+  .walkerProgress {
+    display: none;
+  }
+
+  .walkerProgress b {
+    font-size: clamp(8px, 2.2vw, 9px);
+  }
+
+  .walkerProgress small {
+    display: none;
+  }
+
+  .intro[data-phase="arrived"] .routeMeasure {
+    gap: 1px;
+    width: auto;
+    min-width: 145px;
+    max-width: 48%;
+  }
+
+  .intro[data-phase="arrived"] .routeMilestones {
+    opacity: 0;
+  }
+
+  .intro[data-phase="arrived"] .routeMeasureSample,
+  .intro[data-phase="arrived"] .routeMeasure > strong,
+  .intro[data-phase="arrived"] .routeDistanceStatus,
+  .intro[data-phase="arrived"] .routeDistanceMobileStatus,
+  .intro[data-phase="arrived"] .routeMeasure > small {
+    display: none;
+  }
+
+  .intro[data-phase="arrived"] .routeProgress {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  .intro[data-phase="arrived"] .routeDistanceCaution {
+    white-space: nowrap;
+  }
+
+  .intro[data-phase="arrived"] .routeArrivalSummary {
+    display: block;
+    margin: 0;
+    color: #742e25;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1.2;
+    white-space: nowrap;
   }
 
   .routeMeasureHistoryDesktop {
@@ -935,8 +1235,10 @@
   .detailMap,
   .foldPanel,
   .routeInk,
+  .routeMilestones,
   .routeMeasure,
   .walker,
+  .walkerProgress,
   .arrivalStamp,
   .skipButton,
   .replayButton {

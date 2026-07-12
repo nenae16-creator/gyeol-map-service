@@ -78,8 +78,8 @@ const DETAIL_CROP = {
 const FOLD_CREASES = [228, 430, 605, 713, 847, 995, 1142, 1268, 1415] as const;
 const REQUIRED_ASSET_COUNT = 16;
 const ROUTE_REVEAL_MASK_ID = "journey-route-reveal-mask";
-// Service visualization only: one visible dash is one experiential ri, not a surveyed distance.
-const ROUTE_VISUAL_RI_SPACING = 34;
+// Service visualization only: one visible dash is one experience step, not a surveyed distance.
+const ROUTE_VISUAL_STEP_SPACING = 34;
 
 type DetailLocation = {
   id: string;
@@ -358,10 +358,10 @@ function routePath(routePoints: Point[]) {
 const phaseText: Record<IntroPhase, string> = {
   idle: "가운데 대동여지도에서 한성부를 선택하세요.",
   positioning: "대동여지도를 왼쪽 여정 위치로 옮기고 있습니다.",
-  unfolding: "접이식 지도가 펼쳐지며 체험 거리 1리 단위의 먹길이 이어지고 있습니다.",
+  unfolding: "접이식 지도가 펼쳐지며 체험 눈금 1칸 단위의 먹길이 이어지고 있습니다.",
   revealing: "먹길 끝에서 국립중앙박물관 소장 대동여지도의 도성도를 확대하고 있습니다.",
   walking:
-    "김정호 캐릭터가 한 획을 체험 거리 1리로 표시한 먹길을 따라 한성부 권역 후보로 이동하고 있습니다.",
+    "김정호 캐릭터가 실제 거리가 아닌 체험 눈금 먹길을 따라 한성부 권역 후보로 이동하고 있습니다.",
   arrived: "김정호 캐릭터가 도성도의 선택 위치 후보에 도착했습니다."
 };
 
@@ -421,12 +421,18 @@ export function InteractiveDaedongMapIntro({
   const foldedMapRef = useRef<HTMLDivElement | null>(null);
   const foldedBaseRef = useRef<HTMLImageElement | null>(null);
   const routeInkRef = useRef<SVGSVGElement | null>(null);
+  const routeProgressRef = useRef<HTMLDivElement | null>(null);
+  const routeProgressValueRef = useRef<HTMLElement | null>(null);
+  const routeProgressFillRef = useRef<HTMLSpanElement | null>(null);
   const walkerRef = useRef<HTMLDivElement | null>(null);
+  const walkerProgressStepRef = useRef<HTMLElement | null>(null);
+  const walkerProgressPercentRef = useRef<HTMLElement | null>(null);
   const arrivalRef = useRef<HTMLDivElement | null>(null);
   const skipRef = useRef<HTMLButtonElement | null>(null);
   const replayRef = useRef<HTMLButtonElement | null>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
   const walkProgressRef = useRef({ value: 0 });
+  const progressDisplayRef = useRef("");
   const routeFrameSizeRef = useRef<{ width: number; height: number }>(ROUTE_FRAME);
   const loadedAssetsRef = useRef(new Set<AssetKey>());
   const focusTimerRef = useRef<number | null>(null);
@@ -469,14 +475,33 @@ export function InteractiveDaedongMapIntro({
   );
   const journeyRouteLength =
     journeyRouteDistances[journeyRouteDistances.length - 1] ?? 1;
-  const journeyVisualRiCount = Math.max(
+  const journeyVisualStepCount = Math.max(
     10,
-    Math.round(journeyRouteLength / ROUTE_VISUAL_RI_SPACING)
+    Math.round(journeyRouteLength / ROUTE_VISUAL_STEP_SPACING)
   );
   const journeyRoutePath = useMemo(
     () => routePath(journeyRoutePoints),
     [journeyRoutePoints]
   );
+  const journeyMilestones = useMemo(() => {
+    const foldedTop = FOLDED_FRAME.top * SCENE_FRAME.height;
+    const milestones: Array<{ step: number; x: number; y: number }> = [];
+
+    for (let step = 10; step < journeyVisualStepCount; step += 10) {
+      const point = getRoutePoint(
+        step / journeyVisualStepCount,
+        journeyRoutePoints,
+        journeyRouteDistances
+      );
+      milestones.push({
+        step,
+        x: (point.x * ROUTE_FRAME.width * 100) / SCENE_FRAME.width,
+        y: ((foldedTop + point.y * ROUTE_FRAME.height) * 100) / SCENE_FRAME.height
+      });
+    }
+
+    return milestones;
+  }, [journeyRouteDistances, journeyRoutePoints, journeyVisualStepCount]);
   const arrivalStyle = {
     "--arrival-x": `${(DETAIL_FRAME.left + activeCropPoint.x * DETAIL_FRAME.width + 0.024) * 100}%`,
     "--arrival-y": `${(DETAIL_FRAME.top + activeCropPoint.y * DETAIL_FRAME.height - 0.032) * 100}%`
@@ -510,6 +535,40 @@ export function InteractiveDaedongMapIntro({
     };
   };
 
+  const updateJourneyProgress = (progress: number) => {
+    const normalizedProgress = Math.min(Math.max(progress, 0), 1);
+    const currentStep = Math.min(
+      journeyVisualStepCount,
+      Math.floor(normalizedProgress * journeyVisualStepCount + Number.EPSILON)
+    );
+    const percentage = Math.round((currentStep / journeyVisualStepCount) * 100);
+    routeProgressFillRef.current?.style.setProperty(
+      "--journey-progress",
+      `${(normalizedProgress * 100).toFixed(2)}%`
+    );
+    const displayKey = `${currentStep}/${journeyVisualStepCount}`;
+    if (progressDisplayRef.current === displayKey) return;
+
+    progressDisplayRef.current = displayKey;
+    const progressText = `${currentStep} / ${journeyVisualStepCount}칸 · ${percentage}%`;
+    const progressElement = routeProgressRef.current;
+    progressElement?.setAttribute("aria-valuenow", String(currentStep));
+    progressElement?.setAttribute("aria-valuemax", String(journeyVisualStepCount));
+    progressElement?.setAttribute("aria-valuetext", progressText);
+    progressElement?.setAttribute("data-current-step", String(currentStep));
+    progressElement?.setAttribute("data-progress-percent", String(percentage));
+
+    if (routeProgressValueRef.current) {
+      routeProgressValueRef.current.textContent = progressText;
+    }
+    if (walkerProgressStepRef.current) {
+      walkerProgressStepRef.current.textContent = `${currentStep}/${journeyVisualStepCount}칸`;
+    }
+    if (walkerProgressPercentRef.current) {
+      walkerProgressPercentRef.current.textContent = `${percentage}%`;
+    }
+  };
+
   const placeWalker = (progress: number, animateStep = false) => {
     const walker = walkerRef.current;
     if (!walker) return;
@@ -525,6 +584,7 @@ export function InteractiveDaedongMapIntro({
       yPercent: -100,
       rotation: step * 1.4
     });
+    updateJourneyProgress(progress);
   };
 
   const resetExperience = (restoreFocus = false) => {
@@ -1100,8 +1160,8 @@ export function InteractiveDaedongMapIntro({
           ref={routeInkRef}
           className={styles.routeInk}
           aria-hidden="true"
-          data-route-distance-unit="experiential-ri"
-          data-route-distance-ri={journeyVisualRiCount}
+          data-route-distance-unit="experience-step"
+          data-route-step-count={journeyVisualStepCount}
           viewBox={`0 0 ${SCENE_FRAME.width} ${SCENE_FRAME.height}`}
           preserveAspectRatio="none"
         >
@@ -1130,41 +1190,95 @@ export function InteractiveDaedongMapIntro({
           <g mask={`url(#${ROUTE_REVEAL_MASK_ID})`}>
             <path
               className={`${styles.routeInkPath} ${styles.routeInkFeather}`}
-              data-route-kind="ri-dash"
-              data-distance-unit="1-ri"
+              data-route-kind="step-dash"
+              data-distance-unit="1-step"
               d={journeyRoutePath}
-              pathLength={journeyVisualRiCount}
+              pathLength={journeyVisualStepCount}
             />
             <path
               className={`${styles.routeInkPath} ${styles.routeInkCore}`}
-              data-route-kind="ri-dash"
-              data-distance-unit="1-ri"
+              data-route-kind="step-dash"
+              data-distance-unit="1-step"
               d={journeyRoutePath}
-              pathLength={journeyVisualRiCount}
-            />
-            <path
-              className={styles.routeTenRiMarks}
-              data-route-kind="ten-ri"
-              d={journeyRoutePath}
-              pathLength={journeyVisualRiCount}
+              pathLength={journeyVisualStepCount}
             />
           </g>
         </svg>
 
+        <ol
+          className={styles.routeMilestones}
+          aria-label="체험 눈금 10칸 단위 이정표"
+          aria-hidden="true"
+        >
+          {journeyMilestones.map((milestone) => (
+            <li
+              key={milestone.step}
+              data-route-marker-step={milestone.step}
+              style={
+                {
+                  "--route-marker-x": `${milestone.x}%`,
+                  "--route-marker-y": `${milestone.y}%`
+                } as CSSProperties
+              }
+            >
+              <span aria-hidden="true" />
+              <b>{milestone.step}칸</b>
+            </li>
+          ))}
+        </ol>
+
         <aside
           className={styles.routeMeasure}
-          aria-label="체험 거리 눈금 안내"
+          aria-label="체험 눈금과 거리 상태 안내"
           aria-hidden={phase === "idle" || phase === "positioning"}
         >
           <span className={styles.routeMeasureSample} aria-hidden="true">
-            — — — <b>●</b>
+            — — — ··· <b>● 10칸</b>
           </span>
-          <strong>한 획 = 체험 거리 1리</strong>
+          <strong>한 획 = 체험 눈금 1칸</strong>
+          <div
+            ref={routeProgressRef}
+            className={styles.routeProgress}
+            role="progressbar"
+            aria-label="체험 경로 진행"
+            aria-valuemin={0}
+            aria-valuemax={journeyVisualStepCount}
+            aria-valuenow={0}
+            aria-valuetext={`0 / ${journeyVisualStepCount}칸 · 0%`}
+            data-current-step="0"
+            data-progress-percent="0"
+          >
+            <span>체험 진행</span>
+            <b ref={routeProgressValueRef}>0 / {journeyVisualStepCount}칸 · 0%</b>
+            <i aria-hidden="true">
+              <span ref={routeProgressFillRef} />
+            </i>
+          </div>
+          <dl className={styles.routeDistanceStatus}>
+            <div>
+              <dt>현대 좌표 거리</dt>
+              <dd>산출 전</dd>
+            </div>
+            <div>
+              <dt>고지도 노정 거리</dt>
+              <dd>근거 확인 중</dd>
+            </div>
+          </dl>
+          <p className={styles.routeDistanceMobileStatus}>현대·고지도 거리 미확정</p>
+          <p className={styles.routeArrivalSummary}>
+            10 · 20 → 총 {journeyVisualStepCount}칸
+          </p>
+          <p className={styles.routeDistanceCaution}>
+            <span className={styles.routeDistanceCautionDesktop}>
+              체험 눈금은 실제 거리값이 아닙니다.
+            </span>
+            <span className={styles.routeDistanceCautionMobile}>실제 거리 아님</span>
+          </p>
           <small>
             <span className={styles.routeMeasureHistoryDesktop}>
-              ● 원본 대동여지도는 도로에 10리마다 점
+              참고: 원본 대동여지도 도로는 10리마다 점
             </span>
-            <span className={styles.routeMeasureHistoryMobile}>● 원지도 10리점</span>
+            <span className={styles.routeMeasureHistoryMobile}>원본 도로는 10리마다 점</span>
           </small>
         </aside>
 
@@ -1175,6 +1289,10 @@ export function InteractiveDaedongMapIntro({
             onLoad={() => markAssetReady("walker")}
             onError={markAssetError}
           />
+          <span className={styles.walkerProgress}>
+            <b ref={walkerProgressStepRef}>0/{journeyVisualStepCount}칸</b>
+            <small ref={walkerProgressPercentRef}>0%</small>
+          </span>
         </div>
 
         <div
@@ -1183,7 +1301,8 @@ export function InteractiveDaedongMapIntro({
           style={arrivalStyle}
           aria-hidden="true"
         >
-          도착
+          <strong>도착</strong>
+          <small>총 {journeyVisualStepCount}칸</small>
         </div>
 
         <button
