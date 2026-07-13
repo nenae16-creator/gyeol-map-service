@@ -516,6 +516,14 @@
   line-height: 1.45;
 }
 
+.detailCreditToggle {
+  display: none;
+}
+
+.detailCreditContent {
+  display: grid;
+}
+
 .detailReadingNote {
   color: #6d271e;
   font-size: 1.06em;
@@ -697,11 +705,11 @@
 .routeMeasure {
   position: absolute;
   right: 57.2%;
-  top: 71.5%;
+  top: 68.5%;
   z-index: 8;
   display: grid;
   gap: 3px;
-  width: clamp(205px, 15.5vw, 230px);
+  width: clamp(235px, 17.5vw, 265px);
   margin: 0;
   padding: 8px 10px 7px;
   border: 1px solid rgb(93 54 31 / 52%);
@@ -808,8 +816,10 @@
 
 .routeDistanceStatus > div {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  padding: 1px 0;
 }
 
 .routeDistanceStatus dt,
@@ -823,9 +833,34 @@
   color: #614a38;
 }
 
+.routeDistanceStatus [data-road-state] dt::before {
+  display: inline-block;
+  width: 6px;
+  aspect-ratio: 1;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: #9a6a2e;
+  content: "";
+  box-shadow: 0 0 0 1px rgb(91 58 34 / 28%);
+}
+
+.routeDistanceStatus [data-road-state="success"] dt::before {
+  background: #3f6c55;
+}
+
+.routeDistanceStatus [data-road-state="unavailable"] dt::before {
+  background: #923a2e;
+}
+
+.routeDistanceStatus [data-road-state] dd {
+  white-space: nowrap;
+}
+
 .routeDistanceStatus dd {
   margin: 0;
   color: #7e3228;
+  font-size: clamp(10px, 0.68vw, 11px);
+  font-weight: 900;
 }
 
 .routeDistanceBasis {
@@ -842,10 +877,6 @@
   font-size: clamp(9px, 0.62vw, 10px);
   font-weight: 900;
   line-height: 1.3;
-}
-
-.routeDistanceCautionMobile {
-  display: none;
 }
 
 .routeDistanceMobileStatus {
@@ -1109,15 +1140,7 @@
   }
 
   .routeDistanceCaution {
-    font-size: 10px;
-  }
-
-  .routeDistanceCautionDesktop {
     display: none;
-  }
-
-  .routeDistanceCautionMobile {
-    display: inline;
   }
 
   .walkerProgress {
@@ -1214,12 +1237,52 @@
     right: auto;
     left: 2.8%;
     bottom: 3%;
-    max-width: 68%;
-    padding: 4px 6px;
+    max-width: none;
+    padding: 0;
+    border-left: 0;
+    background: transparent;
     font-size: clamp(8px, 2.35vw, 10px);
     transition:
       opacity 260ms ease,
       visibility 260ms ease;
+  }
+
+  .detailCreditToggle {
+    display: block;
+    min-height: 32px;
+    padding: 4px 7px;
+    border: 1px solid rgb(104 68 42 / 44%);
+    color: #602c21;
+    background: rgb(232 214 179 / 96%);
+    font: inherit;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .detailCreditToggle:focus-visible {
+    outline: 2px solid #9a3023;
+    outline-offset: 2px;
+  }
+
+  .detailCreditContent {
+    display: none;
+  }
+
+  .detailCredit[data-expanded="true"] {
+    max-width: 74%;
+    padding: 4px 6px;
+    border-left: 2px solid rgb(136 45 32 / 58%);
+    background: rgb(229 209 169 / 96%);
+  }
+
+  .detailCredit[data-expanded="true"] .detailCreditToggle {
+    min-height: 26px;
+    margin-bottom: 3px;
+    padding: 2px 5px;
+  }
+
+  .detailCredit[data-expanded="true"] .detailCreditContent {
+    display: grid;
   }
 
   .intro[data-phase="unfolding"] .detailCredit,

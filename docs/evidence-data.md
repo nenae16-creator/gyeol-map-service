@@ -111,6 +111,24 @@ status = approximate
 
 거리는 평균 지구 반지름 `6,371,008.8m`를 사용한 Haversine 대권거리로 계산합니다. 화면에는 반드시 `현대 좌표 직선거리`, `약`, `도로 이동거리와 다름`을 함께 표시합니다. 이 값은 도로·도보 거리, 1861년 노정 거리, SVG 먹길 길이, 체험 30칸과 서로 환산하지 않습니다.
 
+## 현대 자동차 추천 경로
+
+자동차 도로거리와 예상시간은 [카카오모빌리티 자동차 길찾기](https://developers.kakaomobility.com/guide/navi-api/directions)의 `RECOMMEND` 경로 요약값을 사용합니다.
+
+| 항목 | 값 |
+| --- | --- |
+| 서버 엔드포인트 | `/api/road-distance?destinationId=...` |
+| 외부 호출 | `GET https://apis-navi.kakaomobility.com/v1/directions` |
+| 인증 | 서버 전용 `KAKAO_MOBILITY_REST_API_KEY` |
+| 경로 기준 | `priority=RECOMMEND`, `summary=true` |
+| 거리 | `routes[0].summary.distance` 미터 |
+| 예상시간 | `routes[0].summary.duration` 초 |
+| 서버 캐시 | 2분, 이후 3분 동안 stale 재검증 허용 |
+
+브라우저는 목적지 ID만 동일 출처 서버 함수로 전달합니다. 서버는 공주시청과 시범 목적지 3곳을 허용 목록으로 관리하며 임의 좌표 프록시로 동작하지 않습니다. REST API 키와 카카오 인증 헤더는 클라이언트 번들·응답·진단 정보에 포함하지 않습니다.
+
+자동차 추천 경로는 교통상황과 제공자의 경로 정책에 따라 달라질 수 있으며 도보거리나 1861년 노정 거리가 아닙니다. 서버 키가 설정되지 않았거나 제공자 요청이 실패해도 직선거리·고지도 상태·지도 체험은 유지하고 자동차 경로만 `현재 확인할 수 없음`으로 표시합니다.
+
 ## 이용조건 분리
 
 - 소장품 페이지와 판본 이미지: 공공누리 제1유형, 출처표시

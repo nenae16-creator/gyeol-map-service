@@ -53,7 +53,7 @@
 - 숫자 신뢰도 대신 `판본에서 확인`, `공공데이터 확인`, `권역 대응 추정` 라벨
 - 국립중앙박물관 대동여지도 신수19997 소장품 출처 연결
 - 결과 화면에서 사용자가 선택할 때만 기존 접이 지도·먹길·김정호 체험 실행
-- 체험 먹길은 `한 획 = 체험 눈금 1칸`으로 전개하고 10칸마다 이정표를 표시합니다. 체험 30칸은 실제 거리 단위가 아닙니다. 현대 거리는 [공주시청 공식 위치 페이지](https://www.gongju.go.kr/kr/sub05_04_01.do)에 내장된 공주시청 기준점에서 선택한 지도 목적지까지의 대권 직선거리를 `약 km`로 표시하며 도로 이동거리와 구분합니다. 고지도 노정 거리는 `현재 확인되지 않음`으로 별도 표시합니다. 원본 지도는 도로에 10리마다 점을 찍었다는 [국립중앙박물관 소장품 설명](https://www.museum.go.kr/MUSEUM/contents/M0502000000.do?relicId=4502&schM=view&searchId=search)을 참고했습니다.
+- 체험 먹길은 `한 획 = 체험 눈금 1칸`으로 전개하고 10칸마다 이정표를 표시합니다. 체험 30칸은 실제 거리 단위가 아닙니다. 현대 거리는 [공주시청 공식 위치 페이지](https://www.gongju.go.kr/kr/sub05_04_01.do)에 내장된 공주시청 기준점에서 선택 목적지까지의 대권 직선거리와 [카카오모빌리티 자동차 길찾기](https://developers.kakaomobility.com/guide/navi-api/directions)의 추천 경로를 구분해 표시합니다. 길찾기 키가 없거나 요청에 실패하면 직선거리는 유지하고 자동차 경로만 `현재 확인할 수 없음`으로 안내합니다. 고지도 노정 거리는 별도로 `현재 확인되지 않음`으로 표시합니다. 원본 지도는 도로에 10리마다 점을 찍었다는 [국립중앙박물관 소장품 설명](https://www.museum.go.kr/MUSEUM/contents/M0502000000.do?relicId=4502&schM=view&searchId=search)을 참고했습니다.
 - 기존 화면은 소스·자산 백업과 `?legacy=1` 접근 경로로 보존
 
 실행:
@@ -79,9 +79,11 @@ http://127.0.0.1:5187/?legacy=1
 
 ```bash
 npm run typecheck
+npm run verify:road-distance
 npm run build
 npm run qa
 npm run qa:production
+npm run smoke:road-distance -- --url=https://배포주소
 ```
 
 `npm run qa`는 로컬 서버를 대상으로 데스크톱·모바일의 질문, 해독, 근거 결과, 체험 진입·복귀, 미지원 위치와 위치 권한 거부 상태를 검사하고 `tmp/qa/`에 결과를 저장합니다. `npm run qa:production`은 동일한 검사를 운영 주소에서 실행하고 `tmp/qa-production/`에 저장합니다.
@@ -101,6 +103,8 @@ https://gyeol-map-service.vercel.app
 - `src/components/GyeolServiceExperience.tsx`: 질문, 현재 위치, 해독, 근거 결과, 체험 연결
 - `src/components/GyeolServiceExperience.module.css`: 사진형 작업대 위 서비스 레이아웃과 상태별 전환
 - `src/data/gyeolDemo.ts`: 서울 도성권 시범 장소와 구조화된 근거 데이터
+- `api/road-distance.js`: 카카오 REST 키를 보호하는 자동차 추천 경로 서버 함수
+- `src/data/roadDistanceClient.ts`: 동일 출처 도로거리 요청과 성공·실패 상태 정규화
 - `src/components/InteractiveDaedongMapIntro.tsx`: 결과 이후에 실행되는 기존 지도 전개 체험
 - `public/assets/gyeol-service-desk-plate.png`: 검색·진행 문구를 비운 서비스용 사진 배경판
 - `backups/2026-07-10-current-map-experience/`: 서비스 개편 전 화면의 소스·설정·사용 자산 백업
