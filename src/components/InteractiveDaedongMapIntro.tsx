@@ -474,7 +474,8 @@ export function InteractiveDaedongMapIntro({
     return registeredLocations?.length ? registeredLocations : DEFAULT_DETAIL_LOCATIONS;
   }, [mapRegions]);
   const normalizedPlaceId =
-    selectedPlaceId === "browser-location" ? "seoul-city-hall" : selectedPlaceId;
+    selectedPlace?.canonicalPlaceId ??
+    (selectedPlaceId === "browser-location" ? "seoul-city-hall" : selectedPlaceId);
   const registeredModernDestination = demoPlaces.find(
     (place) => place.id === normalizedPlaceId
   );

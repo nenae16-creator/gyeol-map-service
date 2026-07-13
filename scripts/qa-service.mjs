@@ -174,6 +174,10 @@ const report = {
   },
   desktop: {},
   mobile: {},
+  cheonan: {
+    desktop: {},
+    mobile: {},
+  },
   consoleErrors: [],
   expectedConsoleErrors: [],
   pageErrors: [],
@@ -494,6 +498,20 @@ try {
 
   await navigate(page, baseUrl, "desktop.idle");
   report.desktop.idleLayout = await getLayout(page);
+  report.cheonan.desktop.defaultQuery = await page
+    .locator("#gyeol-place-search")
+    .inputValue();
+  report.cheonan.desktop.defaultPlaceCard = (
+    await page
+      .getByText("첫 시범 위치", { exact: true })
+      .locator("..")
+      .textContent()
+  )
+    ?.replace(/\s+/g, " ")
+    .trim();
+  report.cheonan.desktop.defaultActionVisible = await page
+    .getByRole("button", { name: "천안역 예시로 해독하기" })
+    .isVisible();
   await capture(page, `service-idle-${version}.png`, "desktop.idle");
 
   report.desktop.tabOrder = [];
@@ -510,7 +528,10 @@ try {
     );
   }
 
-  await page.getByRole("button", { name: "서울시청 예시로 해독하기" }).click();
+  await page.locator("#gyeol-place-search").fill("서울시청");
+  await page
+    .locator('form[role="search"]')
+    .evaluate((form) => form.requestSubmit());
   await page.waitForTimeout(850);
   report.desktop.decodingLayout = await getLayout(page);
   await capture(page, `service-decoding-${version}.png`, "desktop.decoding");
@@ -863,9 +884,10 @@ try {
     "mobile.idle",
   );
 
+  await mobilePage.locator("#gyeol-place-search").fill("서울시청");
   await mobilePage
-    .getByRole("button", { name: "서울시청 예시로 해독하기" })
-    .click();
+    .locator('form[role="search"]')
+    .evaluate((form) => form.requestSubmit());
   await mobilePage
     .getByRole("heading", { name: "한양·한성부 권역 후보" })
     .waitFor({ state: "visible" });
@@ -1003,6 +1025,225 @@ try {
 
   await mobilePage.waitForLoadState("networkidle", { timeout: 10000 });
   await mobileContext.close();
+
+  const cheonanContext = await createContext(browser, {
+    viewport: { width: 1487, height: 1058 },
+    deviceScaleFactor: 1,
+    colorScheme: "light",
+    reducedMotion: "no-preference",
+  });
+  await installRoadDistanceMock(cheonanContext, "cheonan");
+  const cheonanPage = await cheonanContext.newPage();
+  attachDiagnostics(cheonanPage, "cheonan");
+  await navigate(cheonanPage, baseUrl, "cheonan.idle");
+  report.cheonan.desktop.idleLayout = await getLayout(cheonanPage);
+  report.cheonan.desktop.defaultQuery = await cheonanPage
+    .locator("#gyeol-place-search")
+    .inputValue();
+  report.cheonan.desktop.defaultPlaceCard = (
+    await cheonanPage
+      .getByText("첫 시범 위치", { exact: true })
+      .locator("..")
+      .textContent()
+  )
+    ?.replace(/\s+/g, " ")
+    .trim();
+
+  await cheonanPage.locator("#gyeol-place-search").fill("천안역");
+  await cheonanPage
+    .locator('form[role="search"]')
+    .evaluate((form) => form.requestSubmit());
+  const cheonanDecodingScene = cheonanPage.locator(
+    'section[data-stage="decoding"]',
+  );
+  await cheonanDecodingScene.waitFor({ state: "attached", timeout: 5000 });
+  report.cheonan.desktop.decodingPlace = await cheonanPage
+    .getByText("천안역 · 충청남도 천안시 동남구 대흥로 239", {
+      exact: true,
+    })
+    .textContent();
+  report.cheonan.desktop.decodingBusy =
+    (await cheonanDecodingScene.getAttribute("aria-busy")) === "true";
+  await capture(
+    cheonanPage,
+    `service-cheonan-decoding-${version}.png`,
+    "cheonan.decoding",
+  );
+
+  const cheonanResultHeading = cheonanPage.getByRole("heading", {
+    name: "천안군 권역 후보",
+  });
+  await cheonanResultHeading.waitFor({ state: "visible", timeout: 10000 });
+  report.cheonan.desktop.resultLayout = await getLayout(cheonanPage);
+  report.cheonan.desktop.resultHeading = await cheonanResultHeading.textContent();
+  report.cheonan.desktop.resultFocus = await cheonanPage.evaluate(
+    () => document.activeElement?.textContent?.trim() ?? "",
+  );
+
+  const cheonanInferenceDetails = cheonanPage.locator("details").filter({
+    has: cheonanPage.getByText("현대 위치와 역사 권역의 대응", {
+      exact: true,
+    }),
+  });
+  if (!(await cheonanInferenceDetails.evaluate((details) => details.open))) {
+    await cheonanInferenceDetails.locator("summary").click();
+  }
+  report.cheonan.desktop.inferenceText = await cheonanInferenceDetails
+    .locator("p")
+    .first()
+    .textContent();
+  report.cheonan.desktop.inferenceSources = await cheonanInferenceDetails
+    .locator('ul[aria-label="현대 위치와 역사 권역의 대응 출처"] li')
+    .evaluateAll((items) =>
+      items.map((item) => {
+        const link = item.querySelector("a");
+        return {
+          label: link?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+          href: link?.href ?? "",
+          metadata:
+            item.querySelector("span")?.textContent?.replace(/\s+/g, " ").trim() ??
+            "",
+        };
+      }),
+    );
+
+  const cheonanJourneyButton = cheonanPage
+    .locator("button")
+    .filter({ hasText: "천안군 권역 판본 확대하기" });
+  report.cheonan.desktop.journeyButtonText = (
+    await cheonanJourneyButton.textContent()
+  )
+    ?.replace(/\s+/g, " ")
+    .trim();
+  report.cheonan.desktop.journeyButtonLabel =
+    await cheonanJourneyButton.getAttribute("aria-label");
+  await capture(
+    cheonanPage,
+    `service-cheonan-result-${version}.png`,
+    "cheonan.result",
+  );
+
+  await cheonanJourneyButton.click();
+  const cheonanRegionalMap = cheonanPage.locator(
+    '[data-testid="regional-map-zoom"]',
+  );
+  await cheonanRegionalMap.waitFor({ state: "visible", timeout: 10000 });
+  await cheonanPage.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-testid="regional-map-zoom"]')
+        ?.getAttribute("data-ready") === "true",
+    undefined,
+    { timeout: 10000 },
+  );
+  await cheonanPage.waitForTimeout(2800);
+  report.cheonan.desktop.regionalMapReady =
+    (await cheonanRegionalMap.getAttribute("data-ready")) === "true";
+  report.cheonan.desktop.regionalMapLabel =
+    await cheonanRegionalMap.getAttribute("aria-label");
+  const cheonanZoomHeading = cheonanPage.getByRole("heading", {
+    name: "천안 표기 판면 확대",
+  });
+  report.cheonan.desktop.zoomHeading = await cheonanZoomHeading.textContent();
+  report.cheonan.desktop.zoomHeadingVisible =
+    await cheonanZoomHeading.isVisible();
+  report.cheonan.desktop.coordinateWarning = await cheonanPage
+    .getByText("현대 천안역과 옛 지도의 천안 표기는 같은 점이 아닙니다.", {
+      exact: true,
+    })
+    .textContent();
+  report.cheonan.desktop.officialSheetBackground = await cheonanPage
+    .getByRole("img", {
+      name: "국립중앙박물관 대동여지도 공식 판면에서 천안 표기를 확대한 모습",
+    })
+    .evaluate((image) => getComputedStyle(image).backgroundImage);
+  report.cheonan.desktop.zoomLayout = await getLayout(cheonanPage);
+  await capture(
+    cheonanPage,
+    `service-cheonan-regional-zoom-${version}.png`,
+    "cheonan.regional-zoom",
+  );
+
+  await cheonanPage
+    .getByRole("button", { name: "근거 결과로 돌아가기" })
+    .click();
+  await cheonanResultHeading.waitFor({ state: "visible", timeout: 10000 });
+  report.cheonan.desktop.returnedToResult =
+    (await cheonanResultHeading.textContent()) === "천안군 권역 후보";
+  report.cheonan.desktop.roadDistanceRequestCount =
+    report.mockedRoadDistanceRequests.filter(
+      (request) => request.scope === "cheonan",
+    ).length;
+  await cheonanContext.close();
+
+  const cheonanMobileContext = await createContext(browser, {
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 1,
+    colorScheme: "light",
+    reducedMotion: "reduce",
+  });
+  await installRoadDistanceMock(cheonanMobileContext, "cheonan-mobile");
+  const cheonanMobilePage = await cheonanMobileContext.newPage();
+  attachDiagnostics(cheonanMobilePage, "cheonan-mobile");
+  await navigate(cheonanMobilePage, baseUrl, "cheonan-mobile.idle");
+  report.cheonan.mobile.idleLayout = await getLayout(cheonanMobilePage);
+  report.cheonan.mobile.defaultQuery = await cheonanMobilePage
+    .locator("#gyeol-place-search")
+    .inputValue();
+  await cheonanMobilePage.locator("#gyeol-place-search").fill("천안역");
+  await cheonanMobilePage
+    .locator('form[role="search"]')
+    .evaluate((form) => form.requestSubmit());
+  await cheonanMobilePage
+    .getByRole("heading", { name: "천안군 권역 후보" })
+    .waitFor({ state: "visible", timeout: 10000 });
+  report.cheonan.mobile.resultLayout = await getLayout(cheonanMobilePage);
+  report.cheonan.mobile.resultHeadingVisible = await cheonanMobilePage
+    .getByRole("heading", { name: "천안군 권역 후보" })
+    .isVisible();
+  const cheonanMobileJourneyButton = cheonanMobilePage
+    .locator("button")
+    .filter({ hasText: "천안군 권역 판본 확대하기" });
+  report.cheonan.mobile.journeyButtonVisible =
+    await cheonanMobileJourneyButton.isVisible();
+  await capture(
+    cheonanMobilePage,
+    `service-mobile-cheonan-result-${version}.png`,
+    "cheonan-mobile.result",
+  );
+
+  await cheonanMobileJourneyButton.click();
+  const cheonanMobileRegionalMap = cheonanMobilePage.locator(
+    '[data-testid="regional-map-zoom"]',
+  );
+  await cheonanMobileRegionalMap.waitFor({ state: "visible", timeout: 10000 });
+  await cheonanMobilePage.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-testid="regional-map-zoom"]')
+        ?.getAttribute("data-ready") === "true",
+    undefined,
+    { timeout: 10000 },
+  );
+  report.cheonan.mobile.zoomLayout = await getLayout(cheonanMobilePage);
+  report.cheonan.mobile.zoomHeadingVisible = await cheonanMobilePage
+    .getByRole("heading", { name: "천안 표기 판면 확대" })
+    .isVisible();
+  report.cheonan.mobile.coordinateWarningVisible = await cheonanMobilePage
+    .getByText("현대 천안역과 옛 지도의 천안 표기는 같은 점이 아닙니다.", {
+      exact: true,
+    })
+    .isVisible();
+  await capture(
+    cheonanMobilePage,
+    `service-mobile-cheonan-regional-zoom-${version}.png`,
+    "cheonan-mobile.regional-zoom",
+  );
+  report.cheonan.mobile.roadDistanceRequestCount =
+    report.mockedRoadDistanceRequests.filter(
+      (request) => request.scope === "cheonan-mobile",
+    ).length;
+  await cheonanMobileContext.close();
 
   const alternateDistanceContext = await createContext(browser, {
     viewport: { width: 1487, height: 1058 },
@@ -1142,9 +1383,10 @@ try {
     baseUrl,
     "road-distance-unavailable.idle",
   );
+  await unavailableRoadPage.locator("#gyeol-place-search").fill("서울시청");
   await unavailableRoadPage
-    .getByRole("button", { name: "서울시청 예시로 해독하기" })
-    .click();
+    .locator('form[role="search"]')
+    .evaluate((form) => form.requestSubmit());
   await unavailableRoadPage
     .getByRole("heading", { name: "한양·한성부 권역 후보" })
     .waitFor({ state: "visible" });
@@ -1234,6 +1476,87 @@ try {
 
   report.clientKeyLeak = report.clientKeyLeakFindings.length > 0;
   report.coreChecks = {
+    cheonanDefaultQuery:
+      report.cheonan.desktop.defaultQuery === "천안역" &&
+      report.cheonan.mobile.defaultQuery === "천안역",
+    cheonanDefaultCard:
+      /^첫 시범 위치\s*천안역 · 충청남도 천안시$/.test(
+        report.cheonan.desktop.defaultPlaceCard ?? "",
+      ),
+    cheonanDefaultAction:
+      report.cheonan.desktop.defaultActionVisible === true,
+    cheonanSearchAndResult:
+      report.cheonan.desktop.decodingPlace ===
+        "천안역 · 충청남도 천안시 동남구 대흥로 239" &&
+      report.cheonan.desktop.decodingBusy === true &&
+      report.cheonan.desktop.resultHeading === "천안군 권역 후보" &&
+      report.cheonan.desktop.resultFocus === "천안군 권역 후보" &&
+      /충청남도 천안시 동남구 대흥로 239/.test(
+        report.cheonan.desktop.inferenceText ?? "",
+      ) &&
+      /국가철도공단의 1905년 개업 기록/.test(
+        report.cheonan.desktop.inferenceText ?? "",
+      ),
+    cheonanInferenceSources:
+      JSON.stringify(report.cheonan.desktop.inferenceSources) ===
+      JSON.stringify([
+        {
+          label:
+            "한국철도공사 · 공공데이터포털 · 한국철도공사_역 위치 정보 · 천안역",
+          href:
+            "https://www.data.go.kr/data/15127532/fileData.do?recommendDataYn=Y",
+          metadata:
+            "데이터셋 15127532 · 접근일 2026.07.13 · 이용허락범위 제한 없음",
+        },
+        {
+          label: "국가철도공단 · 공공데이터포털 · 철도역 정보 · 천안역",
+          href: "https://www.data.go.kr/data/15067652/fileData.do",
+          metadata:
+            "데이터셋 15067652 · 접근일 2026.07.13 · 이용허락범위 제한 없음",
+        },
+        {
+          label: "천안시 · 천안시 연혁 · 1416년 천안군",
+          href: "https://www.cheonan.go.kr/kor/sub04_01_01.do",
+          metadata:
+            "공식 기록 cheonan-history-1416 · 접근일 2026.07.13 · 천안시 누리집 저작권 정책 적용 · 사실 확인용 출처",
+        },
+      ]),
+    cheonanJourneyCta:
+      report.cheonan.desktop.journeyButtonText ===
+        "천안군 권역 판본 확대하기" &&
+      report.cheonan.desktop.journeyButtonLabel === null,
+    cheonanRegionalMap:
+      report.cheonan.desktop.regionalMapReady === true &&
+      report.cheonan.desktop.regionalMapLabel ===
+        "대동여지도 공식 판본에서 천안군 권역 후보 확대" &&
+      report.cheonan.desktop.zoomHeading === "천안 표기 판면 확대" &&
+      report.cheonan.desktop.zoomHeadingVisible === true &&
+      report.cheonan.desktop.coordinateWarning ===
+        "현대 천안역과 옛 지도의 천안 표기는 같은 점이 아닙니다.",
+    cheonanOfficialSheet:
+      /\/assets\/official\/nmk-shinsu19997-cheonan-sheet-96-original\.jpg/.test(
+        report.cheonan.desktop.officialSheetBackground ?? "",
+      ),
+    cheonanReturnedToResult:
+      report.cheonan.desktop.returnedToResult === true,
+    cheonanDesktopNoHorizontalOverflow: [
+      report.cheonan.desktop.idleLayout,
+      report.cheonan.desktop.resultLayout,
+      report.cheonan.desktop.zoomLayout,
+    ].every(hasNoHorizontalOverflow),
+    cheonanMobileFlow:
+      report.cheonan.mobile.resultHeadingVisible === true &&
+      report.cheonan.mobile.journeyButtonVisible === true &&
+      report.cheonan.mobile.zoomHeadingVisible === true &&
+      report.cheonan.mobile.coordinateWarningVisible === true,
+    cheonanMobileNoHorizontalOverflow: [
+      report.cheonan.mobile.idleLayout,
+      report.cheonan.mobile.resultLayout,
+      report.cheonan.mobile.zoomLayout,
+    ].every(hasNoHorizontalOverflow),
+    cheonanRoadDistanceIsolation:
+      report.cheonan.desktop.roadDistanceRequestCount === 0 &&
+      report.cheonan.mobile.roadDistanceRequestCount === 0,
     desktopJourneyButton: report.desktop.journeyButtonVisible === true,
     desktopPublicDataExpanded: report.desktop.publicDataExpanded === true,
     desktopOfficialDoseongdo: /nmk-shinsu19997-doseongdo-original\.jpg/.test(
@@ -1292,8 +1615,14 @@ try {
           { term: "고지도 노정 거리", value: "현재 확인되지 않음" },
         ]),
     desktopDistanceCardClearsProgress:
-      report.desktop.routeMeasureLayout.y + report.desktop.routeMeasureLayout.height <=
-      report.desktop.journeySceneLayout.y + report.desktop.journeySceneLayout.height * 0.87,
+      Boolean(
+        report.desktop.routeMeasureLayout &&
+          report.desktop.journeySceneLayout &&
+          report.desktop.routeMeasureLayout.y +
+            report.desktop.routeMeasureLayout.height <=
+            report.desktop.journeySceneLayout.y +
+              report.desktop.journeySceneLayout.height * 0.87,
+      ),
     desktopAlternateModernDistance:
       Math.abs(report.desktop.alternateDistanceMeters - 126214) <= 2 &&
       report.desktop.alternateDistanceDestination === "gwanghwamun" &&

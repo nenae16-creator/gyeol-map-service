@@ -26,10 +26,9 @@
 
 1. 현재 위치 확인
 2. 현대 행정구역과 주변 POI 변환
-3. 옛지명 후보 3개 추출
+3. 근거가 확인된 옛지명 권역 후보 추출
 4. 대동여지도 해당 영역과 교차검증
-5. 신뢰도 산출
-6. 판본 근거, 공공데이터 근거, 추정 라벨과 함께 음성 답변
+5. 판본 근거, 공공데이터 근거, 추정 라벨을 분리한 답변
 
 답변 예시:
 
@@ -46,13 +45,14 @@
 3. 판본·공공데이터·추정을 구분한 결과
 4. 사용자가 선택한 뒤 관련 지도 전개 체험
 
-현재 시범 데이터는 서울시청·광화문·경복궁 인근의 `한양·한성부 권역 후보` 한 사례만 제공합니다. 지원하지 않는 위치는 가장 가까운 옛지명을 임의로 반환하지 않고 시범 범위 밖이라고 안내합니다.
+현재 시범 데이터는 `천안역 → 천안군 권역 후보`와 서울시청·광화문·경복궁 인근의 `한양·한성부 권역 후보`를 제공합니다. 천안역은 한국철도공사 공개 좌표, 천안시 연혁·주소, 국립중앙박물관 공식 판면의 천안 표기를 함께 대조합니다. 지원하지 않는 위치는 가장 가까운 옛지명을 임의로 반환하지 않고 시범 범위 밖이라고 안내합니다.
 
 - 실제 검색 폼과 현재 위치 권한 요청
 - 현대 장소 → 옛지명 후보 → 판본 확인 → 근거형 답변의 순차 상태
 - 숫자 신뢰도 대신 `판본에서 확인`, `공공데이터 확인`, `권역 대응 추정` 라벨
 - 국립중앙박물관 대동여지도 신수19997 소장품 출처 연결
-- 결과 화면에서 사용자가 선택할 때만 기존 접이 지도·먹길·김정호 체험 실행
+- 천안 결과에서는 전체 지도에서 공식 이미지 파일 96의 천안 표기로 들어가는 판면 확대 체험 실행
+- 서울 결과에서는 사용자가 선택할 때만 기존 접이 지도·먹길·김정호 체험 실행
 - 체험 먹길은 `한 획 = 체험 눈금 1칸`으로 전개하고 10칸마다 이정표를 표시합니다. 체험 30칸은 실제 거리 단위가 아닙니다. 현대 거리는 [공주시청 공식 위치 페이지](https://www.gongju.go.kr/kr/sub05_04_01.do)에 내장된 공주시청 기준점에서 선택 목적지까지의 대권 직선거리와 [카카오모빌리티 자동차 길찾기](https://developers.kakaomobility.com/guide/navi-api/directions)의 추천 경로를 구분해 표시합니다. 길찾기 키가 없거나 요청에 실패하면 직선거리는 유지하고 자동차 경로만 `현재 확인할 수 없음`으로 안내합니다. 고지도 노정 거리는 별도로 `현재 확인되지 않음`으로 표시합니다. 원본 지도는 도로에 10리마다 점을 찍었다는 [국립중앙박물관 소장품 설명](https://www.museum.go.kr/MUSEUM/contents/M0502000000.do?relicId=4502&schM=view&searchId=search)을 참고했습니다.
 - 기존 화면은 소스·자산 백업과 `?legacy=1` 접근 경로로 보존
 
@@ -79,6 +79,7 @@ http://127.0.0.1:5187/?legacy=1
 
 ```bash
 npm run typecheck
+npm run verify:evidence
 npm run verify:road-distance
 npm run build
 npm run qa
@@ -104,10 +105,12 @@ https://gyeol-map-service.vercel.app
 
 - `src/components/GyeolServiceExperience.tsx`: 질문, 현재 위치, 해독, 근거 결과, 체험 연결
 - `src/components/GyeolServiceExperience.module.css`: 사진형 작업대 위 서비스 레이아웃과 상태별 전환
-- `src/data/gyeolDemo.ts`: 서울 도성권 시범 장소와 구조화된 근거 데이터
+- `src/data/gyeolDemo.ts`: 천안군·서울 도성권 시범 장소와 권역별 체험 설정
 - `api/road-distance.js`: 카카오 REST 키를 보호하는 자동차 추천 경로 서버 함수
 - `src/data/roadDistanceClient.ts`: 동일 출처 도로거리 요청과 성공·실패 상태 정규화
 - `src/components/InteractiveDaedongMapIntro.tsx`: 결과 이후에 실행되는 기존 지도 전개 체험
+- `src/components/RegionalMapZoom.tsx`: 전체 지도에서 천안 공식 판면으로 전환하는 권역 확대 체험
+- `public/assets/official/nmk-shinsu19997-cheonan-sheet-96-original.jpg`: 천안 표기를 확인한 공식 원본 판면
 - `public/assets/gyeol-service-desk-plate.png`: 검색·진행 문구를 비운 서비스용 사진 배경판
 - `backups/2026-07-10-current-map-experience/`: 서비스 개편 전 화면의 소스·설정·사용 자산 백업
 

@@ -1,10 +1,32 @@
+export type DemoRegionId = "hanseong" | "cheonan";
+
 export type DemoPlace = {
   id: string;
+  regionId: DemoRegionId;
   label: string;
   adminLabel: string;
   latitude: number;
   longitude: number;
   aliases: string[];
+  canonicalPlaceId?: string;
+};
+
+export type JourneyPresentation =
+  | {
+      kind: "doseongdo-walk";
+      buttonLabel: string;
+      ariaLabel: string;
+    }
+  | {
+      kind: "regional-zoom";
+      buttonLabel: string;
+      ariaLabel: string;
+      mapRegionId: string;
+    };
+
+export type DemoExperience = {
+  wholeMapRegionId: string;
+  journey: JourneyPresentation;
 };
 
 export type ClaimStatus =
@@ -33,6 +55,24 @@ export type SourceReference = {
   datasetUrl?: string;
   accessedAt: string;
   sourceUpdatedAt?: string;
+  coordinates?: {
+    placeId: string;
+    crs: "WGS84";
+    latitude: number;
+    longitude: number;
+  };
+  historicalFact?: {
+    year: number;
+    historicalName: string;
+  };
+  addressFact?: {
+    placeId: string;
+    address: string;
+  };
+  openingFact?: {
+    placeId: string;
+    openedAt: string;
+  };
   license: {
     name: string;
     url: string;
@@ -54,6 +94,7 @@ export type MapRegionReference = {
   label: string;
   modernPlaceId?: string;
   mapId: string;
+  imageId?: string;
   collectionNumber: "신수19997";
   edition: "신유본(1861)";
   assetPath: string;
@@ -72,6 +113,7 @@ export type MapRegionReference = {
   registrationStatus: MapRegistrationStatus;
   reviewedAt?: string;
   reviewNote: string;
+  sourceIds?: string[];
 };
 
 export type OfficialArtifactRecord = {
@@ -158,6 +200,7 @@ export type GyeolResultEnvelope = DemoResult & {
   artifact: OfficialArtifactRecord;
   sources: SourceReference[];
   mapRegions: MapRegionReference[];
+  experience: DemoExperience;
   delivery: {
     mode: DeliveryMode;
     servedAt: string;

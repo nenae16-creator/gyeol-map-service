@@ -1181,4 +1181,20 @@
     top: 8.8%;
     width: 90%;
   }
+
+  .backToResult {
+    right: 4%;
+    left: auto;
+    transform: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .backToResult {
+    top: 2.5%;
+    right: 3%;
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 10px;
+  }
 }

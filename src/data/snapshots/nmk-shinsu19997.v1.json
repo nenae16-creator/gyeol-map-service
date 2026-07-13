@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotCreatedAt": "2026-07-11T14:40:30.123Z",
+  "snapshotCreatedAt": "2026-07-13T07:30:09.413Z",
   "record": {
     "collectionNumber": "신수19997",
     "title": "대동여지도",
@@ -36,6 +36,19 @@
         "imageUrl": "https://www.museum.go.kr/relic_image/PS01001001/ssu019/2018/0723134130201/ssu019997-00-09.jpg",
         "identificationEvidenceUrl": "https://www.museum.go.kr/MUSEUM/contents/M0701040000.do?arcId=23486&catCustomType=post&catId=93&schM=view",
         "rightsSourceId": "nmk-collection-shinsu19997"
+      },
+      {
+        "id": "nmk-shinsu19997-cheonan-sheet-96",
+        "galleryIndex": 95,
+        "title": "공식 이미지 파일 96 · 천안 일대 판면",
+        "fileName": "ssu019997-00-96.jpg",
+        "width": 3000,
+        "height": 1794,
+        "imageUrl": "https://www.museum.go.kr/relic_image/PS01001001/ssu019/2018/0723134130201/ssu019997-00-96.jpg",
+        "identificationEvidenceUrl": "https://www.museum.go.kr/site/main/relic/search/view?relicId=4502",
+        "rightsSourceId": "nmk-collection-shinsu19997",
+        "localAssetPath": "/assets/official/nmk-shinsu19997-cheonan-sheet-96-original.jpg",
+        "sha256": "CCCC9342B409E5BC242D04CD275370C7EFEE2AAB56BE56324871895ABE9B087D"
       }
     ]
   },
@@ -85,6 +98,79 @@
         "appliesTo": "text",
         "attributionRequired": true
       }
+    },
+    {
+      "id": "korail-cheonan-station-location",
+      "organization": "한국철도공사 · 공공데이터포털",
+      "datasetTitle": "한국철도공사_역 위치 정보",
+      "datasetId": "15127532",
+      "recordTitle": "한국철도공사_역 위치 정보 · 천안역",
+      "recordId": "천안역",
+      "recordUrl": "https://www.data.go.kr/data/15127532/fileData.do?recommendDataYn=Y",
+      "datasetUrl": "https://www.data.go.kr/data/15127532/fileData.do?recommendDataYn=Y",
+      "accessedAt": "2026-07-13",
+      "sourceUpdatedAt": "2025-09-03",
+      "coordinates": {
+        "placeId": "cheonan-station",
+        "crs": "WGS84",
+        "latitude": 36.808837,
+        "longitude": 127.1471716
+      },
+      "license": {
+        "name": "이용허락범위 제한 없음",
+        "url": "https://www.data.go.kr/data/15127532/fileData.do?recommendDataYn=Y",
+        "appliesTo": "metadata",
+        "attributionRequired": false
+      }
+    },
+    {
+      "id": "cheonan-city-history",
+      "organization": "천안시",
+      "recordTitle": "천안시 연혁 · 1416년 천안군",
+      "recordId": "cheonan-history-1416",
+      "recordUrl": "https://www.cheonan.go.kr/kor/sub04_01_01.do",
+      "accessedAt": "2026-07-13",
+      "historicalFact": {
+        "year": 1416,
+        "historicalName": "천안군"
+      },
+      "license": {
+        "name": "천안시 누리집 저작권 정책 적용 · 사실 확인용 출처",
+        "url": "https://www.cheonan.go.kr/kor/sub04_01_01.do",
+        "appliesTo": "text",
+        "attributionRequired": true
+      }
+    },
+    {
+      "id": "kr-cheonan-station-record",
+      "organization": "국가철도공단 · 공공데이터포털",
+      "datasetTitle": "국가철도공단_철도역 정보",
+      "datasetId": "15067652",
+      "recordTitle": "철도역 정보 · 천안역",
+      "recordId": "천안역",
+      "recordUrl": "https://www.data.go.kr/data/15067652/fileData.do",
+      "datasetUrl": "https://www.data.go.kr/data/15067652/fileData.do",
+      "accessedAt": "2026-07-13",
+      "coordinates": {
+        "placeId": "cheonan-station",
+        "crs": "WGS84",
+        "latitude": 36.809452,
+        "longitude": 127.147055
+      },
+      "addressFact": {
+        "placeId": "cheonan-station",
+        "address": "충청남도 천안시 동남구 대흥로 239"
+      },
+      "openingFact": {
+        "placeId": "cheonan-station",
+        "openedAt": "1905-01-01"
+      },
+      "license": {
+        "name": "이용허락범위 제한 없음",
+        "url": "https://www.data.go.kr/data/15067652/fileData.do",
+        "appliesTo": "metadata",
+        "attributionRequired": false
+      }
     }
   ],
   "mapRegions": [
@@ -115,6 +201,74 @@
       "registrationStatus": "approximate",
       "reviewedAt": "2026-07-11",
       "reviewNote": "결과 화면의 전체지도에 쓰는 512×767 로컬 파생 이미지 좌표계로 기존 한성부 표식을 환산한 임시 등록값입니다. 후속 지도 체험은 공식 도성도로 교체했지만, 이 전체지도 점은 공식 첩·면 좌표나 역사 경계로 검수된 값이 아닙니다."
+    },
+    {
+      "id": "local-cheonan-provisional",
+      "label": "천안군 권역 후보",
+      "modernPlaceId": "cheonan-station",
+      "mapId": "local-daedongyeojido-visual-v2",
+      "collectionNumber": "신수19997",
+      "edition": "신유본(1861)",
+      "assetPath": "/assets/daedongyeojido-idle-toned-v2.png",
+      "assetSpace": {
+        "width": 512,
+        "height": 767,
+        "origin": "top-left"
+      },
+      "point": {
+        "unit": "normalized",
+        "x": 0.369,
+        "y": 0.507
+      },
+      "bounds": {
+        "unit": "normalized",
+        "x": 0.319,
+        "y": 0.467,
+        "width": 0.1,
+        "height": 0.08
+      },
+      "registrationStatus": "approximate",
+      "reviewedAt": "2026-07-13",
+      "sourceIds": [
+        "nmk-collection-shinsu19997",
+        "korail-cheonan-station-location",
+        "kr-cheonan-station-record",
+        "cheonan-city-history"
+      ],
+      "reviewNote": "결과 화면의 512×767 로컬 파생 전체지도에서 천안 일대를 시각적으로 표시한 근사 영역입니다. 공식 판면과 현대 좌표를 지오리퍼런싱한 결과가 아니며 역사 경계로 확정할 수 없습니다."
+    },
+    {
+      "id": "nmk-cheonan-label-estimate",
+      "label": "천안(天安) 표기 · 판면 추정",
+      "mapId": "nmk-shinsu19997-img96-cheonan-original",
+      "imageId": "nmk-shinsu19997-cheonan-sheet-96",
+      "collectionNumber": "신수19997",
+      "edition": "신유본(1861)",
+      "assetPath": "/assets/official/nmk-shinsu19997-cheonan-sheet-96-original.jpg",
+      "assetSha256": "CCCC9342B409E5BC242D04CD275370C7EFEE2AAB56BE56324871895ABE9B087D",
+      "assetSpace": {
+        "width": 3000,
+        "height": 1794,
+        "origin": "top-left"
+      },
+      "point": {
+        "unit": "normalized",
+        "x": 0.457333,
+        "y": 0.604236
+      },
+      "bounds": {
+        "unit": "normalized",
+        "x": 0.32,
+        "y": 0.36,
+        "width": 0.3,
+        "height": 0.48
+      },
+      "registrationStatus": "approximate",
+      "reviewedAt": "2026-07-13",
+      "sourceIds": [
+        "nmk-collection-shinsu19997"
+      ],
+      "reviewNote": "국립중앙박물관 공식 이미지 파일 96에서 천안(天安) 표기를 시각 판독한 추정점과 주변 크롭 영역입니다. 현대 장소 ID나 좌표를 이 판면 영역에 직접 연결하지 않았으며 지오리퍼런싱 결과가 아닙니다."
     },
     {
       "id": "doseongdo-gyeongbokgung-estimate",

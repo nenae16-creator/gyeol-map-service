@@ -19,9 +19,12 @@ import {
 import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  DEFAULT_DEMO_PLACE_ID,
   demoPlaces,
+  findDemoArea,
   findDemoPlace,
-  isInsideSeoulDemoArea
+  getDemoPlace,
+  getDemoRegionProfile
 } from "../data/gyeolDemo";
 import { resolveGyeolResult } from "../data/gyeolClient";
 import { buildCuratedFallback } from "../data/gyeolFallback";
@@ -33,12 +36,14 @@ import type {
 } from "../domain/gyeolEvidence";
 import { publicAssetUrl } from "../utils/publicAssetUrl";
 import { InteractiveDaedongMapIntro } from "./InteractiveDaedongMapIntro";
+import { RegionalMapZoom } from "./RegionalMapZoom";
 import styles from "./GyeolServiceExperience.module.css";
 
 type ServiceStage = "idle" | "decoding" | "result" | "journey";
 
 const SERVICE_PLATE_URL = publicAssetUrl("assets/gyeol-service-desk-plate.png");
 const MAP_URL = publicAssetUrl("assets/daedongyeojido-idle-toned-v2.png");
+const FEATURED_DEMO_PLACE = getDemoPlace(DEFAULT_DEMO_PLACE_ID) ?? demoPlaces[0];
 
 const decodeSteps = [
   {
@@ -95,9 +100,17 @@ function sourceLabel(source: SourceReference) {
   return `${source.organization} · ${source.recordTitle}`;
 }
 
+function sourceIdentifier(source: SourceReference) {
+  if (source.datasetId) return `데이터셋 ${source.datasetId}`;
+  if (source.id === "nmk-collection-shinsu19997") {
+    return `소장품번호 ${source.recordId}`;
+  }
+  return `공식 기록 ${source.recordId}`;
+}
+
 export function GyeolServiceExperience() {
   const [stage, setStage] = useState<ServiceStage>("idle");
-  const [query, setQuery] = useState("서울시청");
+  const [query, setQuery] = useState(FEATURED_DEMO_PLACE?.label ?? "천안역");
   const [decodeStep, setDecodeStep] = useState(0);
   const [pendingResult, setPendingResult] = useState<GyeolResultEnvelope | null>(null);
   const [result, setResult] = useState<GyeolResultEnvelope | null>(null);
@@ -173,7 +186,7 @@ export function GyeolServiceExperience() {
 
     if (!place) {
       setNotice(
-        "현재 시범 서비스는 서울시청·광화문·경복궁 인근만 해독할 수 있습니다. 지원되는 예시 장소를 선택해 주세요."
+        "현재 시범 서비스는 천안역·서울시청·광화문·경복궁 인근만 해독할 수 있습니다. 지원되는 예시 장소를 선택해 주세요."
       );
       searchRef.current?.focus();
       return;
@@ -194,19 +207,22 @@ export function GyeolServiceExperience() {
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         setLocating(false);
+        const proxyPlace = findDemoArea(coords.latitude, coords.longitude);
 
-        if (!isInsideSeoulDemoArea(coords.latitude, coords.longitude)) {
+        if (!proxyPlace) {
           setNotice(
-            "확인된 위치는 현재 시범 해독 권역 밖입니다. 결과를 임의로 만들지 않고 서울시청 예시만 제공합니다."
+            "확인된 위치는 현재 시범 해독 권역 밖입니다. 결과를 임의로 만들지 않고 검증된 예시만 제공합니다."
           );
           return;
         }
 
+        const profile = getDemoRegionProfile(proxyPlace.regionId);
         beginDecode({
-          ...demoPlaces[0],
+          ...proxyPlace,
           id: "browser-location",
+          canonicalPlaceId: proxyPlace.id,
           label: "현재 위치",
-          adminLabel: "서울 도성권 시범 범위",
+          adminLabel: `${profile.label} 시범 범위`,
           latitude: coords.latitude,
           longitude: coords.longitude,
           aliases: []
@@ -216,7 +232,7 @@ export function GyeolServiceExperience() {
         setLocating(false);
         setNotice(
           error.code === error.PERMISSION_DENIED
-            ? "위치 권한을 사용할 수 없습니다. 장소를 직접 검색하거나 서울시청 예시를 선택해 주세요."
+            ? "위치 권한을 사용할 수 없습니다. 장소를 직접 검색하거나 검증된 예시를 선택해 주세요."
             : "현재 위치를 확인하지 못했습니다. 장소명을 직접 입력해 주세요."
         );
       },
@@ -236,14 +252,19 @@ export function GyeolServiceExperience() {
   };
 
   if (stage === "journey") {
+    const journey = result?.experience.journey;
     return (
-      <main className={styles.journeyShell} aria-label="한성부 권역 지도 체험">
-        <InteractiveDaedongMapIntro
-          autoStart
-          selectedPlaceId={result?.place.id}
-          selectedPlace={result?.place}
-          mapRegions={result?.mapRegions}
-        />
+      <main className={styles.journeyShell} aria-label={journey?.ariaLabel ?? "권역 지도 체험"}>
+        {result && journey?.kind === "regional-zoom" ? (
+          <RegionalMapZoom result={result} />
+        ) : (
+          <InteractiveDaedongMapIntro
+            autoStart
+            selectedPlaceId={result?.place.id}
+            selectedPlace={result?.place}
+            mapRegions={result?.mapRegions}
+          />
+        )}
         <button className={styles.backToResult} type="button" onClick={() => setStage("result")}>
           <ArrowLeft aria-hidden="true" />
           근거 결과로 돌아가기
@@ -253,11 +274,11 @@ export function GyeolServiceExperience() {
   }
 
   const mapRegion = visibleResult?.mapRegions.find(
-    (region) => region.id === "local-hanseong-provisional"
+    (region) => region.id === visibleResult.experience.wholeMapRegionId
   );
   const markerStyle = {
-    "--marker-x": `${(mapRegion?.point.x ?? 0.349695) * 100}%`,
-    "--marker-y": `${(mapRegion?.point.y ?? 0.44069) * 100}%`
+    "--marker-x": `${(mapRegion?.point.x ?? 0) * 100}%`,
+    "--marker-y": `${(mapRegion?.point.y ?? 0) * 100}%`
   } as CSSProperties;
 
   return (
@@ -279,7 +300,7 @@ export function GyeolServiceExperience() {
             id="gyeol-place-search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="서울시청, 광화문처럼 장소를 입력하세요"
+            placeholder="천안역, 서울시청처럼 장소를 입력하세요"
             autoComplete="off"
           />
           <button type="submit" aria-label="입력한 장소를 옛지명으로 해독하기">
@@ -315,12 +336,12 @@ export function GyeolServiceExperience() {
                 className={styles.candidateMarker}
                 style={markerStyle}
                 type="button"
-                hidden={stage === "idle"}
-                aria-label="한양·한성부 권역 후보 설명으로 이동"
+                hidden={stage === "idle" || !mapRegion}
+                aria-label={`${visibleResult?.candidate.name ?? "권역 후보"} 설명으로 이동`}
                 onClick={() => resultHeadingRef.current?.focus({ preventScroll: true })}
               >
                 <MapPin aria-hidden="true" />
-                <span>한성부 권역 후보</span>
+                <span>{visibleResult?.candidate.name ?? "권역 후보"}</span>
               </button>
             </div>
             <figcaption>
@@ -343,17 +364,21 @@ export function GyeolServiceExperience() {
                   <MapPinned aria-hidden="true" />
                   <span>
                     <small>첫 시범 위치</small>
-                    서울시청 · 서울특별시 중구
+                    천안역 · 충청남도 천안시
                   </span>
                 </div>
 
-                <button className={styles.primaryButton} type="button" onClick={() => beginDecode(demoPlaces[0])}>
-                  서울시청 예시로 해독하기
+                <button
+                  className={styles.primaryButton}
+                  type="button"
+                  onClick={() => FEATURED_DEMO_PLACE && beginDecode(FEATURED_DEMO_PLACE)}
+                >
+                  천안역 예시로 해독하기
                   <ArrowRight aria-hidden="true" />
                 </button>
 
                 <div className={styles.exampleArea}>
-                  <span>검증 중인 서울 도성권 예시</span>
+                  <span>공식 근거를 연결한 시범 장소</span>
                   <div>
                     {demoPlaces.map((place) => (
                       <button key={place.id} type="button" onClick={() => beginDecode(place)}>
@@ -488,9 +513,7 @@ export function GyeolServiceExperience() {
                                     <ExternalLink aria-hidden="true" />
                                   </a>
                                   <span>
-                                    {source.datasetId
-                                      ? `데이터셋 ${source.datasetId}`
-                                      : `소장품번호 ${source.recordId}`}
+                                    {sourceIdentifier(source)}
                                     {` · 접근일 ${formatDate(source.accessedAt)} · ${source.license.name}`}
                                   </span>
                                 </li>
@@ -504,9 +527,13 @@ export function GyeolServiceExperience() {
                 </div>
 
                 <div className={styles.resultActions}>
-                  <button className={styles.primaryButton} type="button" onClick={() => setStage("journey")}>
+                  <button
+                    className={styles.primaryButton}
+                    type="button"
+                    onClick={() => setStage("journey")}
+                  >
                     <BookOpenCheck aria-hidden="true" />
-                    한성부 권역 지도 체험하기
+                    {result.experience.journey.buttonLabel}
                   </button>
                   <button className={styles.secondaryButton} type="button" onClick={resetService}>
                     <RotateCcw aria-hidden="true" />
