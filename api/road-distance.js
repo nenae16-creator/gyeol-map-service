@@ -1,6 +1,8 @@
 const KAKAO_DIRECTIONS_URL =
   "https://apis-navi.kakaomobility.com/v1/directions";
 export const REQUEST_TIMEOUT_MS = 5000;
+export const MEMORY_CACHE_TTL_MS = 120_000;
+const routeMemoryCache = new Map();
 
 export const ROAD_JOURNEY_ORIGIN = Object.freeze({
   id: "gongju-city-hall",
@@ -84,6 +86,10 @@ export function parseKakaoDirections(payload) {
   };
 }
 
+export function clearRoadDistanceMemoryCache() {
+  routeMemoryCache.clear();
+}
+
 export default async function handler(request, response) {
   if (request.method !== "GET") {
     response.setHeader("Allow", "GET");
@@ -126,6 +132,18 @@ export default async function handler(request, response) {
     return;
   }
 
+  const cachedRoute = routeMemoryCache.get(destination.id);
+  if (cachedRoute && cachedRoute.expiresAt > Date.now()) {
+    sendJson(
+      response,
+      200,
+      cachedRoute.payload,
+      "public, s-maxage=120, stale-while-revalidate=180",
+    );
+    return;
+  }
+  if (cachedRoute) routeMemoryCache.delete(destination.id);
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -151,17 +169,22 @@ export default async function handler(request, response) {
       return;
     }
 
+    const payload = {
+      status: "success",
+      destinationId: destination.id,
+      method: "driving-route",
+      provider: "kakao-mobility",
+      priority: "RECOMMEND",
+      ...route,
+    };
+    routeMemoryCache.set(destination.id, {
+      expiresAt: Date.now() + MEMORY_CACHE_TTL_MS,
+      payload,
+    });
     sendJson(
       response,
       200,
-      {
-        status: "success",
-        destinationId: destination.id,
-        method: "driving-route",
-        provider: "kakao-mobility",
-        priority: "RECOMMEND",
-        ...route,
-      },
+      payload,
       "public, s-maxage=120, stale-while-revalidate=180",
     );
   } catch (error) {

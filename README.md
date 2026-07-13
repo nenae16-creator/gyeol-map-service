@@ -86,6 +86,8 @@ npm run qa:production
 npm run smoke:road-distance -- --url=https://배포주소
 ```
 
+Vercel 보호 미리보기는 `VERCEL_AUTOMATION_BYPASS_SECRET`을 서버 환경에서 제공하거나, 인증된 CLI의 `npx --yes vercel@latest curl /api/road-distance?... --deployment https://미리보기주소`로 확인합니다. 우회 토큰을 명령행·문서·클라이언트 코드에 직접 넣지 않습니다.
+
 `npm run qa`는 로컬 서버를 대상으로 데스크톱·모바일의 질문, 해독, 근거 결과, 체험 진입·복귀, 미지원 위치와 위치 권한 거부 상태를 검사하고 `tmp/qa/`에 결과를 저장합니다. `npm run qa:production`은 동일한 검사를 운영 주소에서 실행하고 `tmp/qa-production/`에 저장합니다.
 
 모든 화면의 이미지 로드 상태, 콘솔·페이지 오류, 실패한 요청, HTTP 오류와 브라우저 요청의 민감 키 이름 노출을 검사하며 하나라도 실패하면 종료 코드 1을 반환합니다. 다른 배포 주소를 검사할 때는 `QA_BASE_URL`, `QA_ALLOW_REMOTE=1`과 `tmp/` 내부의 `QA_OUTPUT_DIR`을 사용할 수 있습니다.

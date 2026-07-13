@@ -10,12 +10,18 @@ if (!urlArgument) {
 const baseUrl = new URL(urlArgument.slice("--url=".length));
 assert(/^https?:$/.test(baseUrl.protocol), "HTTP(S) 배포 주소만 검사할 수 있습니다.");
 assert(!baseUrl.username && !baseUrl.password, "인증정보가 포함된 주소는 사용할 수 없습니다.");
+const protectionBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
 
 async function request(destinationId) {
   const url = new URL("/api/road-distance", baseUrl);
   url.searchParams.set("destinationId", destinationId);
   const response = await fetch(url, {
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      ...(protectionBypass
+        ? { "x-vercel-protection-bypass": protectionBypass }
+        : {}),
+    },
     redirect: "error",
   });
   const contentType = response.headers.get("content-type") ?? "";

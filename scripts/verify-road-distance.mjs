@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import handler, {
   ROAD_JOURNEY_DESTINATIONS,
   ROAD_JOURNEY_ORIGIN,
+  MEMORY_CACHE_TTL_MS,
   REQUEST_TIMEOUT_MS,
   buildKakaoDirectionsUrl,
+  clearRoadDistanceMemoryCache,
   parseKakaoDirections,
 } from "../api/road-distance.js";
 import { readFile } from "node:fs/promises";
@@ -28,6 +30,7 @@ const { formatRoadDistanceSummary, formatRoadDuration, parseRoadDistancePayload 
 assert.equal(ROAD_JOURNEY_ORIGIN.latitude, 36.446542105093314);
 assert.equal(ROAD_JOURNEY_ORIGIN.longitude, 127.11922678155355);
 assert.equal(REQUEST_TIMEOUT_MS, 5000);
+assert.equal(MEMORY_CACHE_TTL_MS, 120_000);
 assert.deepEqual(Object.keys(ROAD_JOURNEY_DESTINATIONS).sort(), [
   "gwanghwamun",
   "gyeongbokgung",
@@ -156,7 +159,10 @@ try {
   assert.equal(JSON.parse(cacheDirectiveResponse.body).code, "cache-bypass-rejected");
 
   process.env.KAKAO_MOBILITY_REST_API_KEY = "unit-test-placeholder";
+  clearRoadDistanceMemoryCache();
+  let providerCallCount = 0;
   globalThis.fetch = async (_url, options) => {
+    providerCallCount += 1;
     assert.equal(options?.headers?.Authorization, "KakaoAK unit-test-placeholder");
     assert.equal(options?.headers?.["Content-Type"], "application/json");
     return new Response(JSON.stringify(providerPayload), {
@@ -176,7 +182,15 @@ try {
     "public, s-maxage=120, stale-while-revalidate=180",
   );
   assert(!successResponse.body.includes("unit-test-placeholder"));
+  const memoryCacheResponse = createResponse();
+  await handler(
+    { method: "GET", url: "/api/road-distance?destinationId=seoul-city-hall" },
+    memoryCacheResponse,
+  );
+  assert.equal(memoryCacheResponse.statusCode, 200);
+  assert.equal(providerCallCount, 1);
 
+  clearRoadDistanceMemoryCache();
   globalThis.fetch = async () => new Response("{}", { status: 502 });
   const providerErrorResponse = createResponse();
   await handler(
@@ -186,6 +200,7 @@ try {
   assert.equal(providerErrorResponse.statusCode, 502);
   assert.equal(JSON.parse(providerErrorResponse.body).code, "provider-error");
 
+  clearRoadDistanceMemoryCache();
   globalThis.fetch = async () =>
     new Response("not-json", {
       status: 200,
@@ -198,6 +213,7 @@ try {
   );
   assert.equal(malformedResponse.statusCode, 502);
 
+  clearRoadDistanceMemoryCache();
   globalThis.setTimeout = (callback, _delay, ...args) =>
     originalSetTimeout(callback, 0, ...args);
   globalThis.fetch = async (_url, options) =>
@@ -220,6 +236,7 @@ try {
   else process.env.KAKAO_MOBILITY_REST_API_KEY = originalApiKey;
   globalThis.fetch = originalFetch;
   globalThis.setTimeout = originalSetTimeout;
+  clearRoadDistanceMemoryCache();
 }
 
 console.log("자동차 경로거리 요청·응답·표시 검사를 통과했습니다.");
