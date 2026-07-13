@@ -161,7 +161,9 @@ try {
     const fullPath = `${file.parentPath ?? file.path}\\${file.name}`;
     const content = await readFile(fullPath, "utf8");
     assert(!content.includes("DATA_GO_KR_SERVICE_KEY"), `클라이언트 결과물에 서버 키 이름이 포함됐습니다: ${file.name}`);
+    assert(!content.includes("KAKAO_MOBILITY_REST_API_KEY"), `클라이언트 결과물에 길찾기 서버 키 이름이 포함됐습니다: ${file.name}`);
     assert(!content.includes("serviceKey"), `클라이언트 결과물에 API 키 매개변수가 포함됐습니다: ${file.name}`);
+    assert(!content.includes("KakaoAK"), `클라이언트 결과물에 길찾기 인증 방식이 포함됐습니다: ${file.name}`);
   }
 } catch (error) {
   if (error?.code !== "ENOENT") throw error;

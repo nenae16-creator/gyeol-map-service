@@ -3,10 +3,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { demoPlaces } from "../data/gyeolDemo";
 import { GONGJU_CITY_HALL_ORIGIN } from "../data/modernJourney";
+import { fetchRoadDistance } from "../data/roadDistanceClient";
 import {
   formatApproxDistance,
   greatCircleDistanceMeters
 } from "../domain/geoDistance";
+import {
+  formatRoadDistanceSummary,
+  type RoadDistanceState
+} from "../domain/roadDistance";
 import type { DemoPlace, MapRegionReference } from "../domain/gyeolEvidence";
 import { publicAssetUrl } from "../utils/publicAssetUrl";
 import styles from "./interactive-map/InteractiveDaedongMapIntro.module.css";
@@ -416,6 +421,11 @@ export function InteractiveDaedongMapIntro({
   const [phase, setPhase] = useState<IntroPhase>("idle");
   const [assetsReady, setAssetsReady] = useState(false);
   const [assetError, setAssetError] = useState(false);
+  const [detailCreditExpanded, setDetailCreditExpanded] = useState(false);
+  const [roadDistance, setRoadDistance] = useState<RoadDistanceState>({
+    status: "loading",
+    destinationId: "seoul-city-hall"
+  });
 
   const rootRef = useRef<HTMLElement | null>(null);
   const idlePlateRef = useRef<HTMLImageElement | null>(null);
@@ -482,6 +492,11 @@ export function InteractiveDaedongMapIntro({
     [modernDestination.latitude, modernDestination.longitude]
   );
   const modernDistanceText = formatApproxDistance(modernDistanceMeters);
+  const currentRoadDistance: RoadDistanceState =
+    roadDistance.destinationId === modernDestination.id
+      ? roadDistance
+      : { status: "loading", destinationId: modernDestination.id };
+  const roadDistanceText = formatRoadDistanceSummary(currentRoadDistance);
   const activeLocation =
     detailLocations.find((location) => location.modernPlaceId === normalizedPlaceId) ??
     detailLocations.find((location) => location.modernPlaceId === "seoul-city-hall") ??
@@ -623,6 +638,7 @@ export function InteractiveDaedongMapIntro({
     timelineRef.current?.kill();
     walkProgressRef.current.value = 0;
     setPhase("idle");
+    setDetailCreditExpanded(false);
 
     gsap.set(idlePlateRef.current, {
       autoAlpha: 1,
@@ -910,6 +926,26 @@ export function InteractiveDaedongMapIntro({
   };
 
   useEffect(() => {
+    const controller = new AbortController();
+    setRoadDistance({ status: "loading", destinationId: modernDestination.id });
+
+    void fetchRoadDistance(modernDestination.id, controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setRoadDistance(result);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setRoadDistance({
+            status: "unavailable",
+            destinationId: modernDestination.id
+          });
+        }
+      });
+
+    return () => controller.abort();
+  }, [modernDestination.id]);
+
+  useEffect(() => {
     resetExperience(false);
     const handleResize = () => {
       measureRouteFrame();
@@ -1112,27 +1148,41 @@ export function InteractiveDaedongMapIntro({
             <span>도성도 한글 판독</span>
           </header>
           {detailVisible && (
-            <figcaption className={styles.detailCredit}>
-              <span id="doseongdo-reading-note" className={styles.detailReadingNote}>
-                한글 지명은 원본 위에 덧입힌 판독 안내입니다. 서울시청 일대는 현대 위치 추정입니다.
-              </span>
-              <span className={styles.detailSourceLine}>
-                출처: {" "}
-                <a
-                  href="https://www.museum.go.kr/site/main/relic/search/view?relicId=4502"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  국립중앙박물관 「대동여지도」 신수19997 (새 창)
-                </a>
-                {" · "}김정호 · 1861 · {" "}
-                <a
-                  href="https://www.kogl.or.kr/info/licenseType1.do"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  공공누리 제1유형 (새 창)
-                </a>
+            <figcaption
+              className={styles.detailCredit}
+              data-expanded={detailCreditExpanded}
+            >
+              <button
+                type="button"
+                className={styles.detailCreditToggle}
+                aria-expanded={detailCreditExpanded}
+                aria-controls="doseongdo-credit-content"
+                onClick={() => setDetailCreditExpanded((expanded) => !expanded)}
+              >
+                {detailCreditExpanded ? "판독·출처 접기" : "판독·출처 보기"}
+              </button>
+              <span id="doseongdo-credit-content" className={styles.detailCreditContent}>
+                <span id="doseongdo-reading-note" className={styles.detailReadingNote}>
+                  한글 지명은 원본 위에 덧입힌 판독 안내입니다. 서울시청 일대는 현대 위치 추정입니다.
+                </span>
+                <span className={styles.detailSourceLine}>
+                  출처: {" "}
+                  <a
+                    href="https://www.museum.go.kr/site/main/relic/search/view?relicId=4502"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    국립중앙박물관 「대동여지도」 신수19997 (새 창)
+                  </a>
+                  {" · "}김정호 · 1861 · {" "}
+                  <a
+                    href="https://www.kogl.or.kr/info/licenseType1.do"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    공공누리 제1유형 (새 창)
+                  </a>
+                </span>
               </span>
             </figcaption>
           )}
@@ -1282,10 +1332,28 @@ export function InteractiveDaedongMapIntro({
           <dl
             className={styles.routeDistanceStatus}
             aria-label="현대 거리와 고지도 거리 비교"
+            aria-live="polite"
+            aria-busy={currentRoadDistance.status === "loading"}
             data-modern-distance-meters={
               modernDistanceMeters === null ? undefined : Math.round(modernDistanceMeters)
             }
             data-distance-method="great-circle"
+            data-road-distance-status={currentRoadDistance.status}
+            data-road-distance-meters={
+              currentRoadDistance.status === "success"
+                ? currentRoadDistance.distanceMeters
+                : undefined
+            }
+            data-road-duration-seconds={
+              currentRoadDistance.status === "success"
+                ? currentRoadDistance.durationSeconds
+                : undefined
+            }
+            data-road-distance-method={
+              currentRoadDistance.status === "success"
+                ? currentRoadDistance.method
+                : undefined
+            }
             data-origin-id={GONGJU_CITY_HALL_ORIGIN.id}
             data-destination-id={modernDestination.id}
           >
@@ -1293,32 +1361,38 @@ export function InteractiveDaedongMapIntro({
               <dt>현대 좌표 직선거리</dt>
               <dd>{modernDistanceText}</dd>
             </div>
+            <div data-road-state={currentRoadDistance.status}>
+              <dt>현대 자동차 추천 경로</dt>
+              <dd>{roadDistanceText}</dd>
+            </div>
             <div>
               <dt>고지도 노정 거리</dt>
               <dd>현재 확인되지 않음</dd>
             </div>
           </dl>
           <p className={styles.routeDistanceBasis}>
-            {GONGJU_CITY_HALL_ORIGIN.label} ↔ {modernDestination.label} 좌표 기준 · 도로
-            이동거리와 다름
+            직선: {GONGJU_CITY_HALL_ORIGIN.label} ↔ {modernDestination.label} 좌표 기준 ·
+            {currentRoadDistance.status === "success"
+              ? " 도로: 자동차 추천 경로(교통상황에 따라 변동)"
+              : currentRoadDistance.status === "loading"
+                ? " 자동차 추천 경로 계산 중"
+                : " 자동차 경로 현재 확인 불가"}
           </p>
           <p
             className={styles.routeDistanceMobileStatus}
-            aria-label={`${GONGJU_CITY_HALL_ORIGIN.label}에서 ${modernDestination.label}까지 직선 ${modernDistanceText}, 도로거리 아님, 고지도 노정 미확인`}
+            aria-live="polite"
+            aria-busy={currentRoadDistance.status === "loading"}
+            aria-label={`${GONGJU_CITY_HALL_ORIGIN.label}에서 ${modernDestination.label}까지 직선 ${modernDistanceText}, 자동차 추천 경로 ${roadDistanceText}, 고지도 노정 미확인, 체험 ${journeyVisualStepCount}칸은 실제 거리 단위 아님`}
           >
             <span>
               공주→{modernDestination.id === "seoul-city-hall" ? "서울" : modernDestination.label}
               {" · "}직선 {modernDistanceText}
             </span>
-            <span>도로거리 아님 · 고지도 노정 미확인</span>
+            <span>자동차 {roadDistanceText}</span>
+            <span>고지도 미확인 · 체험 {journeyVisualStepCount}칸은 거리 아님</span>
           </p>
           <p className={styles.routeDistanceCaution}>
-            <span className={styles.routeDistanceCautionDesktop}>
-              체험 {journeyVisualStepCount}칸은 실제 거리 단위가 아닙니다.
-            </span>
-            <span className={styles.routeDistanceCautionMobile}>
-              체험 {journeyVisualStepCount}칸은 거리 단위 아님
-            </span>
+            체험 {journeyVisualStepCount}칸은 실제 거리 단위가 아닙니다.
           </p>
           <small>
             <span className={styles.routeMeasureHistoryDesktop}>

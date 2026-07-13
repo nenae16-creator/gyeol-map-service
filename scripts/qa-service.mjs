@@ -175,11 +175,15 @@ const report = {
   desktop: {},
   mobile: {},
   consoleErrors: [],
+  expectedConsoleErrors: [],
   pageErrors: [],
   failedRequests: [],
   httpErrors: [],
+  expectedHttpErrors: [],
   navigationErrors: [],
   blockedExternalRequests: [],
+  directProviderRequests: [],
+  mockedRoadDistanceRequests: [],
   imageErrors: [],
   fatalError: null,
   clientKeyLeak: false,
@@ -189,8 +193,19 @@ const report = {
   ok: false,
 };
 
-function attachDiagnostics(page, scope) {
+function attachDiagnostics(page, scope, options = {}) {
   page.on("request", (request) => {
+    try {
+      const requestUrl = new URL(request.url());
+      if (requestUrl.hostname === "apis-navi.kakaomobility.com") {
+        report.directProviderRequests.push({
+          scope,
+          url: redactSecrets(requestUrl.toString()),
+        });
+      }
+    } catch {
+      // URL 파싱 실패는 아래의 기존 요청 진단에서 별도로 다룹니다.
+    }
     const fields = findSensitiveRequestFields(request);
     if (fields.length > 0) {
       report.clientKeyLeakFindings.push({
@@ -202,7 +217,12 @@ function attachDiagnostics(page, scope) {
   });
   page.on("console", (message) => {
     if (message.type() === "error") {
-      report.consoleErrors.push(`[${scope}] ${redactSecrets(message.text())}`);
+      const errorRecord = `[${scope}] ${redactSecrets(message.text())}`;
+      if (options.isExpectedConsoleError?.(message)) {
+        report.expectedConsoleErrors.push(errorRecord);
+      } else {
+        report.consoleErrors.push(errorRecord);
+      }
     }
   });
   page.on("pageerror", (error) => {
@@ -217,11 +237,16 @@ function attachDiagnostics(page, scope) {
   });
   page.on("response", (response) => {
     if (response.status() >= 400) {
-      report.httpErrors.push({
+      const errorRecord = {
         scope,
         status: response.status(),
         url: redactSecrets(response.url()),
-      });
+      };
+      if (options.isExpectedHttpError?.(response)) {
+        report.expectedHttpErrors.push(errorRecord);
+      } else {
+        report.httpErrors.push(errorRecord);
+      }
     }
   });
 }
@@ -324,6 +349,87 @@ async function createContext(browser, options) {
   return context;
 }
 
+const roadDistanceFixtures = Object.freeze({
+  "seoul-city-hall": Object.freeze({
+    distanceMeters: 143_321,
+    durationSeconds: 7_502,
+  }),
+  gwanghwamun: Object.freeze({
+    distanceMeters: 144_987,
+    durationSeconds: 7_812,
+  }),
+  gyeongbokgung: Object.freeze({
+    distanceMeters: 145_410,
+    durationSeconds: 7_920,
+  }),
+});
+
+async function installRoadDistanceMock(context, scope, status = "success") {
+  await context.route("**/api/road-distance*", async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (requestUrl.pathname !== "/api/road-distance") {
+      await route.continue();
+      return;
+    }
+
+    const destinationId = requestUrl.searchParams.get("destinationId") ?? "";
+    const fixture = roadDistanceFixtures[destinationId];
+    const unavailable = status === "unavailable";
+    report.mockedRoadDistanceRequests.push({
+      scope,
+      destinationId,
+      status: unavailable ? 503 : fixture ? 200 : 400,
+    });
+
+    if (unavailable) {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json; charset=utf-8",
+        headers: { "Cache-Control": "no-store" },
+        body: JSON.stringify({
+          status: "unavailable",
+          code: "provider-not-configured",
+        }),
+      });
+      return;
+    }
+
+    if (!fixture) {
+      await route.fulfill({
+        status: 400,
+        contentType: "application/json; charset=utf-8",
+        body: JSON.stringify({
+          status: "unavailable",
+          code: "unsupported-destination",
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json; charset=utf-8",
+      headers: { "Cache-Control": "no-store" },
+      body: JSON.stringify({
+        status: "success",
+        destinationId,
+        method: "driving-route",
+        provider: "kakao-mobility",
+        priority: "RECOMMEND",
+        ...fixture,
+      }),
+    });
+  });
+}
+
+async function waitForRoadDistanceState(page, status) {
+  await page
+    .locator(
+      `dl[aria-label="현대 거리와 고지도 거리 비교"][data-road-distance-status="${status}"]`,
+    )
+    .waitFor({ state: "attached", timeout: 10000 });
+}
+
 async function getLayout(page) {
   return page.evaluate(() => {
     const rect = (selector) => {
@@ -382,6 +488,7 @@ try {
     colorScheme: "light",
     reducedMotion: "no-preference",
   });
+  await installRoadDistanceMock(desktopContext, "desktop");
   const page = await desktopContext.newPage();
   attachDiagnostics(page, "desktop");
 
@@ -525,12 +632,26 @@ try {
   report.desktop.routeMeasureVisible = await routeMeasure.evaluate(
     (note) => Number.parseFloat(getComputedStyle(note).opacity) > 0.9,
   );
+  report.desktop.routeMeasureLayout = await routeMeasure.evaluate((note) => {
+    const box = note.getBoundingClientRect();
+    return { x: box.x, y: box.y, width: box.width, height: box.height };
+  });
+  report.desktop.journeySceneLayout = await page
+    .locator('section[aria-label^="대동여지도에서 도성도"]')
+    .evaluate((scene) => {
+      const box = scene.getBoundingClientRect();
+      return { x: box.x, y: box.y, width: box.width, height: box.height };
+    });
   report.desktop.routeMeasureText = (await routeMeasure.textContent())
     ?.replace(/\s+/g, " ")
     .trim();
   const distanceComparison = routeMeasure.locator(
     'dl[aria-label="현대 거리와 고지도 거리 비교"]',
   );
+  await waitForRoadDistanceState(page, "success");
+  report.desktop.routeMeasureText = (await routeMeasure.textContent())
+    ?.replace(/\s+/g, " ")
+    .trim();
   report.desktop.modernDistanceMeters = Number(
     await distanceComparison.getAttribute("data-modern-distance-meters"),
   );
@@ -542,6 +663,25 @@ try {
   );
   report.desktop.modernDistanceDestination =
     await distanceComparison.getAttribute("data-destination-id");
+  report.desktop.roadDistanceStatus = await distanceComparison.getAttribute(
+    "data-road-distance-status",
+  );
+  report.desktop.roadDistanceMeters = Number(
+    await distanceComparison.getAttribute("data-road-distance-meters"),
+  );
+  report.desktop.roadDurationSeconds = Number(
+    await distanceComparison.getAttribute("data-road-duration-seconds"),
+  );
+  report.desktop.roadDistanceMethod = await distanceComparison.getAttribute(
+    "data-road-distance-method",
+  );
+  report.desktop.distanceRows = await distanceComparison.locator("div").evaluateAll(
+    (rows) =>
+      rows.map((row) => ({
+        term: row.querySelector("dt")?.textContent?.trim() ?? "",
+        value: row.querySelector("dd")?.textContent?.trim() ?? "",
+      })),
+  );
   report.desktop.modernDistanceText = await distanceComparison
     .locator("dd")
     .first()
@@ -701,6 +841,8 @@ try {
   report.desktop.legacyEnabled = await legacyButton.isEnabled();
   await capture(page, `service-legacy-${version}.png`, "desktop.legacy");
 
+  await waitForRoadDistanceState(page, "success");
+  await page.waitForLoadState("networkidle", { timeout: 10000 });
   await desktopContext.close();
 
   const mobileContext = await createContext(browser, {
@@ -709,6 +851,7 @@ try {
     colorScheme: "light",
     reducedMotion: "reduce",
   });
+  await installRoadDistanceMock(mobileContext, "mobile");
   const mobilePage = await mobileContext.newPage();
   attachDiagnostics(mobilePage, "mobile");
 
@@ -755,6 +898,7 @@ try {
   const mobileRouteMeasure = mobilePage.locator(
     'aside[aria-label="거리 비교와 체험 눈금 안내"]',
   );
+  await waitForRoadDistanceState(mobilePage, "success");
   report.mobile.routeMeasureVisible = await mobileRouteMeasure.evaluate(
     (note) => Number.parseFloat(getComputedStyle(note).opacity) > 0.9,
   );
@@ -764,17 +908,37 @@ try {
   report.mobile.routeCautionVisible = await mobilePage
     .getByText("체험 30칸은 거리 단위 아님", { exact: true })
     .isVisible();
-  report.mobile.modernDistanceVisible =
-    (await mobilePage.getByText("공주→서울 · 직선 약 125km", { exact: true }).isVisible()) &&
-    (await mobilePage
-      .getByText("도로거리 아님 · 고지도 노정 미확인", { exact: true })
-      .isVisible());
   const mobileDistanceComparison = mobileRouteMeasure.locator(
     'dl[aria-label="현대 거리와 고지도 거리 비교"]',
   );
   report.mobile.modernDistanceMeters = Number(
     await mobileDistanceComparison.getAttribute("data-modern-distance-meters"),
   );
+  report.mobile.roadDistanceStatus = await mobileDistanceComparison.getAttribute(
+    "data-road-distance-status",
+  );
+  report.mobile.roadDistanceMeters = Number(
+    await mobileDistanceComparison.getAttribute("data-road-distance-meters"),
+  );
+  report.mobile.roadDurationSeconds = Number(
+    await mobileDistanceComparison.getAttribute("data-road-duration-seconds"),
+  );
+  report.mobile.roadDistanceMethod = await mobileDistanceComparison.getAttribute(
+    "data-road-distance-method",
+  );
+  const mobileDistanceStatus = mobileRouteMeasure.locator(
+    'p[aria-label*="공주시청에서 서울시청까지"]',
+  );
+  report.mobile.distanceLines = await mobileDistanceStatus.locator("span").allTextContents();
+  report.mobile.distanceLinesVisible = await mobileDistanceStatus
+    .locator("span")
+    .evaluateAll((lines) =>
+      lines.map((line) => {
+        const style = getComputedStyle(line);
+        const box = line.getBoundingClientRect();
+        return style.display !== "none" && style.visibility !== "hidden" && box.height > 0;
+      }),
+    );
   const mobileRouteProgress = mobilePage.getByRole("progressbar", {
     name: "실제 거리와 무관한 체험 경로 진행",
   });
@@ -811,18 +975,40 @@ try {
   report.mobile.activeDoseongdoLocation = await mobilePage
     .locator('li[aria-current="location"] strong')
     .textContent();
+  const detailCreditToggle = mobilePage.getByRole("button", {
+    name: "판독·출처 보기",
+  });
+  report.mobile.detailCreditCollapsed =
+    (await detailCreditToggle.isVisible()) &&
+    (await detailCreditToggle.getAttribute("aria-expanded")) === "false";
+  await detailCreditToggle.click();
+  const detailCreditContent = mobilePage.locator("#doseongdo-credit-content");
+  report.mobile.detailCreditExpanded =
+    (await detailCreditContent.evaluate((content) => {
+      const style = getComputedStyle(content);
+      const box = content.getBoundingClientRect();
+      return style.display !== "none" && box.height > 0;
+    })) &&
+    (await mobilePage
+      .getByRole("link", { name: /국립중앙박물관.*새 창/ })
+      .isVisible());
+  await mobilePage.getByRole("button", { name: "판독·출처 접기" }).click();
+  report.mobile.detailCreditRecollapsed =
+    (await detailCreditToggle.getAttribute("aria-expanded")) === "false";
   await capture(
     mobilePage,
     `service-mobile-journey-arrived-${version}.png`,
     "mobile.journey.arrived",
   );
 
+  await mobilePage.waitForLoadState("networkidle", { timeout: 10000 });
   await mobileContext.close();
 
   const alternateDistanceContext = await createContext(browser, {
     viewport: { width: 1487, height: 1058 },
     reducedMotion: "reduce",
   });
+  await installRoadDistanceMock(alternateDistanceContext, "alternate-distance");
   const alternateDistancePage = await alternateDistanceContext.newPage();
   attachDiagnostics(alternateDistancePage, "alternate-distance");
   await navigate(alternateDistancePage, baseUrl, "alternate-distance.idle");
@@ -843,11 +1029,26 @@ try {
   const alternateDistanceComparison = alternateDistancePage.locator(
     'dl[aria-label="현대 거리와 고지도 거리 비교"]',
   );
+  await waitForRoadDistanceState(alternateDistancePage, "success");
   report.desktop.alternateDistanceMeters = Number(
     await alternateDistanceComparison.getAttribute("data-modern-distance-meters"),
   );
   report.desktop.alternateDistanceDestination =
     await alternateDistanceComparison.getAttribute("data-destination-id");
+  report.desktop.alternateRoadDistanceStatus =
+    await alternateDistanceComparison.getAttribute("data-road-distance-status");
+  report.desktop.alternateRoadDistanceMeters = Number(
+    await alternateDistanceComparison.getAttribute("data-road-distance-meters"),
+  );
+  report.desktop.alternateRoadDurationSeconds = Number(
+    await alternateDistanceComparison.getAttribute("data-road-duration-seconds"),
+  );
+  report.desktop.alternateRoadDistanceMethod =
+    await alternateDistanceComparison.getAttribute("data-road-distance-method");
+  report.desktop.alternateRoadDistanceText = await alternateDistanceComparison
+    .locator("dd")
+    .nth(1)
+    .textContent();
   report.desktop.alternateDistanceText = await alternateDistanceComparison
     .locator("dd")
     .first()
@@ -860,6 +1061,7 @@ try {
     `service-alternate-distance-${version}.png`,
     "alternate-distance.arrived",
   );
+  await alternateDistancePage.waitForLoadState("networkidle", { timeout: 10000 });
   await alternateDistanceContext.close();
 
   const grantedLocationContext = await createContext(browser, {
@@ -868,6 +1070,7 @@ try {
     permissions: ["geolocation"],
     geolocation: { latitude: 37.57, longitude: 126.98 },
   });
+  await installRoadDistanceMock(grantedLocationContext, "location-granted");
   const grantedLocationPage = await grantedLocationContext.newPage();
   attachDiagnostics(grantedLocationPage, "location-granted");
   await navigate(grantedLocationPage, baseUrl, "location-granted.idle");
@@ -887,11 +1090,22 @@ try {
   const grantedLocationDistance = grantedLocationPage.locator(
     'dl[aria-label="현대 거리와 고지도 거리 비교"]',
   );
+  await waitForRoadDistanceState(grantedLocationPage, "success");
   report.desktop.grantedLocationDistanceMeters = Number(
     await grantedLocationDistance.getAttribute("data-modern-distance-meters"),
   );
   report.desktop.grantedLocationDistanceDestination =
     await grantedLocationDistance.getAttribute("data-destination-id");
+  report.desktop.grantedLocationRoadStatus =
+    await grantedLocationDistance.getAttribute("data-road-distance-status");
+  report.desktop.grantedLocationRoadMeters = Number(
+    await grantedLocationDistance.getAttribute("data-road-distance-meters"),
+  );
+  report.desktop.grantedLocationRoadDurationSeconds = Number(
+    await grantedLocationDistance.getAttribute("data-road-duration-seconds"),
+  );
+  report.desktop.grantedLocationRoadMethod =
+    await grantedLocationDistance.getAttribute("data-road-distance-method");
   report.desktop.grantedLocationDistanceBasis = await grantedLocationPage
     .getByText(/공주시청 ↔ 서울시청 좌표 기준/)
     .textContent();
@@ -900,7 +1114,92 @@ try {
     `service-location-granted-${version}.png`,
     "location-granted.arrived",
   );
+  await grantedLocationPage.waitForLoadState("networkidle", { timeout: 10000 });
   await grantedLocationContext.close();
+
+  const unavailableRoadContext = await createContext(browser, {
+    viewport: { width: 1487, height: 1058 },
+    reducedMotion: "reduce",
+  });
+  await installRoadDistanceMock(
+    unavailableRoadContext,
+    "road-distance-unavailable",
+    "unavailable",
+  );
+  const unavailableRoadPage = await unavailableRoadContext.newPage();
+  attachDiagnostics(unavailableRoadPage, "road-distance-unavailable", {
+    isExpectedHttpError: (response) => {
+      const responseUrl = new URL(response.url());
+      return response.status() === 503 && responseUrl.pathname === "/api/road-distance";
+    },
+    isExpectedConsoleError: (message) =>
+      /^Failed to load resource: the server responded with a status of 503 \(Service Unavailable\)$/.test(
+        message.text(),
+      ),
+  });
+  await navigate(
+    unavailableRoadPage,
+    baseUrl,
+    "road-distance-unavailable.idle",
+  );
+  await unavailableRoadPage
+    .getByRole("button", { name: "서울시청 예시로 해독하기" })
+    .click();
+  await unavailableRoadPage
+    .getByRole("heading", { name: "한양·한성부 권역 후보" })
+    .waitFor({ state: "visible" });
+  await unavailableRoadPage
+    .getByRole("button", { name: "한성부 권역 지도 체험하기" })
+    .click();
+  await unavailableRoadPage
+    .locator('[data-ready="true"][data-phase="arrived"]')
+    .waitFor({ state: "attached", timeout: 30000 });
+  await waitForRoadDistanceState(unavailableRoadPage, "unavailable");
+  const unavailableDistanceComparison = unavailableRoadPage.locator(
+    'dl[aria-label="현대 거리와 고지도 거리 비교"]',
+  );
+  report.desktop.unavailableModernDistanceMeters = Number(
+    await unavailableDistanceComparison.getAttribute("data-modern-distance-meters"),
+  );
+  report.desktop.unavailableRoadStatus =
+    await unavailableDistanceComparison.getAttribute("data-road-distance-status");
+  report.desktop.unavailableRoadMeters =
+    await unavailableDistanceComparison.getAttribute("data-road-distance-meters");
+  report.desktop.unavailableRoadDuration =
+    await unavailableDistanceComparison.getAttribute("data-road-duration-seconds");
+  report.desktop.unavailableRoadMethod =
+    await unavailableDistanceComparison.getAttribute("data-road-distance-method");
+  report.desktop.unavailableDistanceRows = await unavailableDistanceComparison
+    .locator("div")
+    .evaluateAll((rows) =>
+      rows.map((row) => ({
+        term: row.querySelector("dt")?.textContent?.trim() ?? "",
+        value: row.querySelector("dd")?.textContent?.trim() ?? "",
+      })),
+    );
+  report.desktop.unavailableDistanceBasis = await unavailableRoadPage
+    .getByText(/자동차 경로 현재 확인 불가/)
+    .textContent();
+  const unavailableProgress = unavailableRoadPage.getByRole("progressbar", {
+    name: "실제 거리와 무관한 체험 경로 진행",
+  });
+  report.desktop.unavailableJourneyArrived = true;
+  report.desktop.unavailableRouteStepCount = Number(
+    await unavailableProgress.getAttribute("aria-valuemax"),
+  );
+  report.desktop.unavailableRouteProgressComplete =
+    Number(await unavailableProgress.getAttribute("aria-valuenow")) ===
+      report.desktop.unavailableRouteStepCount &&
+    Number(await unavailableProgress.getAttribute("data-progress-percent")) === 100;
+  report.desktop.unavailableRouteVectorPresent =
+    (await unavailableRoadPage.locator('path[data-route-kind="step-dash"]').count()) === 2 &&
+    (await unavailableRoadPage.locator('path[data-route-kind="reveal"]').count()) === 1;
+  await capture(
+    unavailableRoadPage,
+    `service-road-distance-unavailable-${version}.png`,
+    "road-distance-unavailable.arrived",
+  );
+  await unavailableRoadContext.close();
 
   const locationContext = await createContext(browser, {
     viewport: { width: 1487, height: 1058 },
@@ -919,6 +1218,7 @@ try {
     `service-location-denied-${version}.png`,
     "location-permission.denied",
   );
+  await locationPage.waitForLoadState("networkidle", { timeout: 10000 });
   await locationContext.close();
 } catch (error) {
   report.fatalError = {
@@ -955,6 +1255,9 @@ try {
       /현대 좌표 직선거리\s*약 125km/.test(
         report.desktop.routeMeasureText ?? "",
       ) &&
+      /현대 자동차 추천 경로\s*약 143km · 약 2시간 5분/.test(
+        report.desktop.routeMeasureText ?? "",
+      ) &&
       /고지도 노정 거리\s*현재 확인되지 않음/.test(
         report.desktop.routeMeasureText ?? "",
       ) &&
@@ -971,20 +1274,65 @@ try {
       report.desktop.modernDistanceOrigin === "gongju-city-hall" &&
       report.desktop.modernDistanceDestination === "seoul-city-hall" &&
       report.desktop.modernDistanceText === "약 125km" &&
-      /공주시청 ↔ 서울시청 좌표 기준 · 도로 이동거리와 다름/.test(
+      /직선: 공주시청 ↔ 서울시청 좌표 기준 · 도로: 자동차 추천 경로\(교통상황에 따라 변동\)/.test(
         report.desktop.modernDistanceBasis ?? "",
       ),
+    desktopRoadDistance:
+      report.desktop.roadDistanceStatus === "success" &&
+      report.desktop.roadDistanceMeters === 143321 &&
+      report.desktop.roadDurationSeconds === 7502 &&
+      report.desktop.roadDistanceMethod === "driving-route" &&
+      JSON.stringify(report.desktop.distanceRows) ===
+        JSON.stringify([
+          { term: "현대 좌표 직선거리", value: "약 125km" },
+          {
+            term: "현대 자동차 추천 경로",
+            value: "약 143km · 약 2시간 5분",
+          },
+          { term: "고지도 노정 거리", value: "현재 확인되지 않음" },
+        ]),
+    desktopDistanceCardClearsProgress:
+      report.desktop.routeMeasureLayout.y + report.desktop.routeMeasureLayout.height <=
+      report.desktop.journeySceneLayout.y + report.desktop.journeySceneLayout.height * 0.87,
     desktopAlternateModernDistance:
       Math.abs(report.desktop.alternateDistanceMeters - 126214) <= 2 &&
       report.desktop.alternateDistanceDestination === "gwanghwamun" &&
       report.desktop.alternateDistanceText === "약 126km" &&
-      report.desktop.alternateDistanceLocation === "광화문",
+      report.desktop.alternateDistanceLocation === "광화문" &&
+      report.desktop.alternateRoadDistanceStatus === "success" &&
+      report.desktop.alternateRoadDistanceMeters === 144987 &&
+      report.desktop.alternateRoadDurationSeconds === 7812 &&
+      report.desktop.alternateRoadDistanceMethod === "driving-route" &&
+      report.desktop.alternateRoadDistanceText === "약 145km · 약 2시간 10분",
     desktopGrantedLocationDistance:
       Math.abs(report.desktop.grantedLocationDistanceMeters - 125142) <= 2 &&
       report.desktop.grantedLocationDistanceDestination === "seoul-city-hall" &&
-      /공주시청 ↔ 서울시청 좌표 기준 · 도로 이동거리와 다름/.test(
+      report.desktop.grantedLocationRoadStatus === "success" &&
+      report.desktop.grantedLocationRoadMeters === 143321 &&
+      report.desktop.grantedLocationRoadDurationSeconds === 7502 &&
+      report.desktop.grantedLocationRoadMethod === "driving-route" &&
+      /직선: 공주시청 ↔ 서울시청 좌표 기준 · 도로: 자동차 추천 경로\(교통상황에 따라 변동\)/.test(
         report.desktop.grantedLocationDistanceBasis ?? "",
       ),
+    desktopRoadDistanceUnavailable:
+      report.desktop.unavailableModernDistanceMeters === 125142 &&
+      report.desktop.unavailableRoadStatus === "unavailable" &&
+      report.desktop.unavailableRoadMeters === null &&
+      report.desktop.unavailableRoadDuration === null &&
+      report.desktop.unavailableRoadMethod === null &&
+      JSON.stringify(report.desktop.unavailableDistanceRows) ===
+        JSON.stringify([
+          { term: "현대 좌표 직선거리", value: "약 125km" },
+          { term: "현대 자동차 추천 경로", value: "현재 확인할 수 없음" },
+          { term: "고지도 노정 거리", value: "현재 확인되지 않음" },
+        ]) &&
+      /자동차 경로 현재 확인 불가/.test(
+        report.desktop.unavailableDistanceBasis ?? "",
+      ) &&
+      report.desktop.unavailableJourneyArrived === true &&
+      report.desktop.unavailableRouteStepCount === 30 &&
+      report.desktop.unavailableRouteProgressComplete === true &&
+      report.desktop.unavailableRouteVectorPresent === true,
     desktopRouteProgress:
       report.desktop.routeProgressIncreases === true &&
       report.desktop.routeProgressStep > 0 &&
@@ -1028,16 +1376,30 @@ try {
     mobileRouteMeasure:
       report.mobile.routeMeasureVisible === true &&
       /한 획 = 체험 눈금 1칸/.test(report.mobile.routeMeasureText ?? "") &&
-      /체험 30칸은 거리 단위 아님/.test(report.mobile.routeMeasureText ?? "") &&
-      report.mobile.routeCautionVisible === true,
+      /체험 30칸은 거리 아님/.test(report.mobile.routeMeasureText ?? ""),
     mobileModernDistance:
-      report.mobile.modernDistanceVisible === true &&
-      Math.abs(report.mobile.modernDistanceMeters - 125142) <= 2,
+      Math.abs(report.mobile.modernDistanceMeters - 125142) <= 2 &&
+      report.mobile.roadDistanceStatus === "success" &&
+      report.mobile.roadDistanceMeters === 143321 &&
+      report.mobile.roadDurationSeconds === 7502 &&
+      report.mobile.roadDistanceMethod === "driving-route" &&
+      JSON.stringify(report.mobile.distanceLines) ===
+        JSON.stringify([
+          "공주→서울 · 직선 약 125km",
+          "자동차 약 143km · 약 2시간 5분",
+          "고지도 미확인 · 체험 30칸은 거리 아님",
+        ]) &&
+      JSON.stringify(report.mobile.distanceLinesVisible) ===
+        JSON.stringify([true, true, true]),
     mobileRouteProgressComplete:
       report.mobile.routeProgressComplete === true &&
       report.mobile.routeProgressMax === 30,
     mobileArrivalStep: report.mobile.arrivalStepText === "총 30칸",
     mobileArrived: Boolean(report.mobile.activeDoseongdoLocation),
+    mobileDetailCreditDisclosure:
+      report.mobile.detailCreditCollapsed === true &&
+      report.mobile.detailCreditExpanded === true &&
+      report.mobile.detailCreditRecollapsed === true,
     mobileNoHorizontalOverflow: [
       report.mobile.idleLayout,
       report.mobile.resultLayout,
@@ -1045,6 +1407,19 @@ try {
     locationPermissionDenied: /위치 권한을 사용할 수 없습니다/.test(
       report.desktop.locationDeniedMessage ?? "",
     ),
+    roadDistanceRequestsAreServerMediated:
+      report.directProviderRequests.length === 0 &&
+      report.clientKeyLeakFindings.length === 0,
+    expectedRoadDistanceFallbackOnly:
+      report.expectedHttpErrors.length === 1 &&
+      report.expectedConsoleErrors.length === 1 &&
+      /^\[road-distance-unavailable\] Failed to load resource: the server responded with a status of 503 \(Service Unavailable\)$/.test(
+        report.expectedConsoleErrors[0] ?? "",
+      ) &&
+      report.expectedHttpErrors[0]?.scope === "road-distance-unavailable" &&
+      report.expectedHttpErrors[0]?.status === 503 &&
+      new URL(report.expectedHttpErrors[0]?.url ?? baseUrl).pathname ===
+        "/api/road-distance",
   };
   report.failedChecks = Object.entries(report.coreChecks)
     .filter(([, passed]) => !passed)

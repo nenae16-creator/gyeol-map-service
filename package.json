@@ -11,6 +11,8 @@
     "qa:production": "node scripts/qa-service.mjs production --url=https://gyeol-map-service.vercel.app --output=tmp/qa-production",
     "sync:emuseum": "node --env-file-if-exists=.env scripts/sync-emuseum.mjs",
     "verify:distance": "node scripts/verify-distance.mjs",
+    "verify:road-distance": "node scripts/verify-road-distance.mjs",
+    "smoke:road-distance": "node scripts/smoke-road-distance.mjs",
     "verify:evidence": "node scripts/verify-evidence.mjs",
     "typecheck": "tsc --noEmit"
   },
