@@ -9,6 +9,14 @@ const snapshotPath = fileURLToPath(
 );
 const snapshotText = await readFile(snapshotPath, "utf8");
 const snapshot = JSON.parse(snapshotText);
+const modernJourneyPath = fileURLToPath(
+  new URL(
+    "../src/data/snapshots/modern-journey-origin.v1.json",
+    import.meta.url
+  )
+);
+const modernJourneyText = await readFile(modernJourneyPath, "utf8");
+const modernJourney = JSON.parse(modernJourneyText);
 const doseongdoPath = fileURLToPath(
   new URL(
     "../public/assets/official/nmk-shinsu19997-doseongdo-original.jpg",
@@ -35,6 +43,41 @@ assert(
   "저장본에 서버 환경변수 이름이 포함되어 있습니다."
 );
 assert(!/img(?:Thum)?Uri/i.test(snapshotText), "저장본에 외부 이미지 토큰 URL이 포함되어 있습니다.");
+assert(modernJourney.schemaVersion === 1, "현대 거리 기준점 스키마가 다릅니다.");
+assert(
+  modernJourney.origin?.id === "gongju-city-hall" &&
+    modernJourney.origin?.label === "공주시청",
+  "현대 거리 출발 기준점이 공주시청이 아닙니다."
+);
+assert(
+  modernJourney.origin?.latitude >= -90 &&
+    modernJourney.origin?.latitude <= 90 &&
+    modernJourney.origin?.longitude >= -180 &&
+    modernJourney.origin?.longitude <= 180 &&
+    modernJourney.origin?.latitude === 36.446542105093314 &&
+    modernJourney.origin?.longitude === 127.11922678155355,
+  "공주시청 현대 좌표가 WGS84 범위를 벗어났습니다."
+);
+assert(
+  /^https:\/\/www\.gongju\.go\.kr\//.test(
+    modernJourney.origin?.addressSourceUrl ?? ""
+  ) &&
+    /^https:\/\/www\.gongju\.go\.kr\//.test(
+      modernJourney.origin?.coordinateSourceUrl ?? ""
+    ) &&
+    modernJourney.origin?.accessedAt,
+  "공주시청 현대 좌표에 주소·좌표 출처와 접근일이 필요합니다."
+);
+assert(
+  modernJourney.distanceMethod?.id === "great-circle" &&
+    modernJourney.distanceMethod?.earthRadiusMeters === 6371008.8 &&
+    modernJourney.distanceMethod?.displayQualifier === "approximate",
+  "현대 직선거리 계산·표시 기준이 다릅니다."
+);
+assert(
+  !/serviceKey|DATA_GO_KR_SERVICE_KEY/.test(modernJourneyText),
+  "현대 거리 기준점 저장본에 API 키 필드가 포함되어 있습니다."
+);
 
 for (const source of snapshot.sources ?? []) {
   assert(source.id && source.recordUrl && source.accessedAt, "출처에 ID·URL·접근일이 필요합니다.");

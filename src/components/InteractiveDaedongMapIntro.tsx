@@ -1,7 +1,13 @@
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
-import type { MapRegionReference } from "../domain/gyeolEvidence";
+import { demoPlaces } from "../data/gyeolDemo";
+import { GONGJU_CITY_HALL_ORIGIN } from "../data/modernJourney";
+import {
+  formatApproxDistance,
+  greatCircleDistanceMeters
+} from "../domain/geoDistance";
+import type { DemoPlace, MapRegionReference } from "../domain/gyeolEvidence";
 import { publicAssetUrl } from "../utils/publicAssetUrl";
 import styles from "./interactive-map/InteractiveDaedongMapIntro.module.css";
 
@@ -21,6 +27,7 @@ type Point = {
 type InteractiveDaedongMapIntroProps = {
   autoStart?: boolean;
   selectedPlaceId?: string;
+  selectedPlace?: DemoPlace;
   mapRegions?: MapRegionReference[];
 };
 
@@ -403,6 +410,7 @@ function prefersReducedMotion() {
 export function InteractiveDaedongMapIntro({
   autoStart = false,
   selectedPlaceId = "seoul-city-hall",
+  selectedPlace,
   mapRegions
 }: InteractiveDaedongMapIntroProps) {
   const [phase, setPhase] = useState<IntroPhase>("idle");
@@ -457,6 +465,23 @@ export function InteractiveDaedongMapIntro({
   }, [mapRegions]);
   const normalizedPlaceId =
     selectedPlaceId === "browser-location" ? "seoul-city-hall" : selectedPlaceId;
+  const registeredModernDestination = demoPlaces.find(
+    (place) => place.id === normalizedPlaceId
+  );
+  const modernDestination =
+    (selectedPlace?.id === normalizedPlaceId ? selectedPlace : undefined) ??
+    registeredModernDestination ??
+    selectedPlace ??
+    demoPlaces[0];
+  const modernDistanceMeters = useMemo(
+    () =>
+      greatCircleDistanceMeters(GONGJU_CITY_HALL_ORIGIN, {
+        latitude: modernDestination.latitude,
+        longitude: modernDestination.longitude
+      }),
+    [modernDestination.latitude, modernDestination.longitude]
+  );
+  const modernDistanceText = formatApproxDistance(modernDistanceMeters);
   const activeLocation =
     detailLocations.find((location) => location.modernPlaceId === normalizedPlaceId) ??
     detailLocations.find((location) => location.modernPlaceId === "seoul-city-hall") ??
@@ -1229,7 +1254,7 @@ export function InteractiveDaedongMapIntro({
 
         <aside
           className={styles.routeMeasure}
-          aria-label="체험 눈금과 거리 상태 안내"
+          aria-label="거리 비교와 체험 눈금 안내"
           aria-hidden={phase === "idle" || phase === "positioning"}
         >
           <span className={styles.routeMeasureSample} aria-hidden="true">
@@ -1240,7 +1265,7 @@ export function InteractiveDaedongMapIntro({
             ref={routeProgressRef}
             className={styles.routeProgress}
             role="progressbar"
-            aria-label="체험 경로 진행"
+            aria-label="실제 거리와 무관한 체험 경로 진행"
             aria-valuemin={0}
             aria-valuemax={journeyVisualStepCount}
             aria-valuenow={0}
@@ -1254,25 +1279,46 @@ export function InteractiveDaedongMapIntro({
               <span ref={routeProgressFillRef} />
             </i>
           </div>
-          <dl className={styles.routeDistanceStatus}>
+          <dl
+            className={styles.routeDistanceStatus}
+            aria-label="현대 거리와 고지도 거리 비교"
+            data-modern-distance-meters={
+              modernDistanceMeters === null ? undefined : Math.round(modernDistanceMeters)
+            }
+            data-distance-method="great-circle"
+            data-origin-id={GONGJU_CITY_HALL_ORIGIN.id}
+            data-destination-id={modernDestination.id}
+          >
             <div>
-              <dt>현대 좌표 거리</dt>
-              <dd>산출 전</dd>
+              <dt>현대 좌표 직선거리</dt>
+              <dd>{modernDistanceText}</dd>
             </div>
             <div>
               <dt>고지도 노정 거리</dt>
-              <dd>근거 확인 중</dd>
+              <dd>현재 확인되지 않음</dd>
             </div>
           </dl>
-          <p className={styles.routeDistanceMobileStatus}>현대·고지도 거리 미확정</p>
-          <p className={styles.routeArrivalSummary}>
-            10 · 20 → 총 {journeyVisualStepCount}칸
+          <p className={styles.routeDistanceBasis}>
+            {GONGJU_CITY_HALL_ORIGIN.label} ↔ {modernDestination.label} 좌표 기준 · 도로
+            이동거리와 다름
+          </p>
+          <p
+            className={styles.routeDistanceMobileStatus}
+            aria-label={`${GONGJU_CITY_HALL_ORIGIN.label}에서 ${modernDestination.label}까지 직선 ${modernDistanceText}, 도로거리 아님, 고지도 노정 미확인`}
+          >
+            <span>
+              공주→{modernDestination.id === "seoul-city-hall" ? "서울" : modernDestination.label}
+              {" · "}직선 {modernDistanceText}
+            </span>
+            <span>도로거리 아님 · 고지도 노정 미확인</span>
           </p>
           <p className={styles.routeDistanceCaution}>
             <span className={styles.routeDistanceCautionDesktop}>
-              체험 눈금은 실제 거리값이 아닙니다.
+              체험 {journeyVisualStepCount}칸은 실제 거리 단위가 아닙니다.
             </span>
-            <span className={styles.routeDistanceCautionMobile}>실제 거리 아님</span>
+            <span className={styles.routeDistanceCautionMobile}>
+              체험 {journeyVisualStepCount}칸은 거리 단위 아님
+            </span>
           </p>
           <small>
             <span className={styles.routeMeasureHistoryDesktop}>

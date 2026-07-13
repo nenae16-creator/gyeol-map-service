@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "origin": {
+    "id": "gongju-city-hall",
+    "label": "공주시청",
+    "address": "충청남도 공주시 봉황로 1",
+    "latitude": 36.446542105093314,
+    "longitude": 127.11922678155355,
+    "addressSourceUrl": "https://www.gongju.go.kr/kr/sub05_04_01.do",
+    "coordinateSourceUrl": "https://www.gongju.go.kr/kr/sub05_04_01.do",
+    "accessedAt": "2026-07-13"
+  },
+  "distanceMethod": {
+    "id": "great-circle",
+    "earthRadiusMeters": 6371008.8,
+    "displayQualifier": "approximate"
+  }
+}
