@@ -828,6 +828,14 @@
   color: #7e3228;
 }
 
+.routeDistanceBasis {
+  margin: 0;
+  color: #6a513c;
+  font-size: clamp(8px, 0.56vw, 9px);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
 .routeDistanceCaution {
   margin: 0;
   color: #792c24;
@@ -836,8 +844,7 @@
   line-height: 1.3;
 }
 
-.routeDistanceCautionMobile,
-.routeArrivalSummary {
+.routeDistanceCautionMobile {
   display: none;
 }
 
@@ -1087,8 +1094,13 @@
     display: none;
   }
 
+  .routeDistanceBasis {
+    display: none;
+  }
+
   .routeDistanceMobileStatus {
-    display: block;
+    display: grid;
+    gap: 1px;
     margin: 1px 0 0;
     color: #614a38;
     font-size: 10px;
@@ -1134,7 +1146,7 @@
   .intro[data-phase="arrived"] .routeMeasureSample,
   .intro[data-phase="arrived"] .routeMeasure > strong,
   .intro[data-phase="arrived"] .routeDistanceStatus,
-  .intro[data-phase="arrived"] .routeDistanceMobileStatus,
+  .intro[data-phase="arrived"] .routeDistanceBasis,
   .intro[data-phase="arrived"] .routeMeasure > small {
     display: none;
   }
@@ -1152,16 +1164,6 @@
   }
 
   .intro[data-phase="arrived"] .routeDistanceCaution {
-    white-space: nowrap;
-  }
-
-  .intro[data-phase="arrived"] .routeArrivalSummary {
-    display: block;
-    margin: 0;
-    color: #742e25;
-    font-size: 10px;
-    font-weight: 900;
-    line-height: 1.2;
     white-space: nowrap;
   }
 

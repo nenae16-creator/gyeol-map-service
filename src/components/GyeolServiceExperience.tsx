@@ -241,6 +241,7 @@ export function GyeolServiceExperience() {
         <InteractiveDaedongMapIntro
           autoStart
           selectedPlaceId={result?.place.id}
+          selectedPlace={result?.place}
           mapRegions={result?.mapRegions}
         />
         <button className={styles.backToResult} type="button" onClick={() => setStage("result")}>

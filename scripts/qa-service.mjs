@@ -510,12 +510,12 @@ try {
     { timeout: 10000 },
   );
   const routeMeasure = page.locator(
-    'aside[aria-label="체험 눈금과 거리 상태 안내"]',
+    'aside[aria-label="거리 비교와 체험 눈금 안내"]',
   );
   await page.waitForFunction(
     () => {
       const note = document.querySelector(
-        'aside[aria-label="체험 눈금과 거리 상태 안내"]',
+        'aside[aria-label="거리 비교와 체험 눈금 안내"]',
       );
       return note && Number.parseFloat(getComputedStyle(note).opacity) > 0.9;
     },
@@ -528,6 +528,28 @@ try {
   report.desktop.routeMeasureText = (await routeMeasure.textContent())
     ?.replace(/\s+/g, " ")
     .trim();
+  const distanceComparison = routeMeasure.locator(
+    'dl[aria-label="현대 거리와 고지도 거리 비교"]',
+  );
+  report.desktop.modernDistanceMeters = Number(
+    await distanceComparison.getAttribute("data-modern-distance-meters"),
+  );
+  report.desktop.modernDistanceMethod = await distanceComparison.getAttribute(
+    "data-distance-method",
+  );
+  report.desktop.modernDistanceOrigin = await distanceComparison.getAttribute(
+    "data-origin-id",
+  );
+  report.desktop.modernDistanceDestination =
+    await distanceComparison.getAttribute("data-destination-id");
+  report.desktop.modernDistanceText = await distanceComparison
+    .locator("dd")
+    .first()
+    .textContent();
+  report.desktop.modernDistanceBasis = await routeMeasure
+    .locator("p")
+    .filter({ hasText: "좌표 기준" })
+    .textContent();
   report.desktop.routeRevealInProgress = await routeRevealPath.evaluate((path) => {
     const style = getComputedStyle(path);
     const offset = Number.parseFloat(style.strokeDashoffset);
@@ -539,7 +561,9 @@ try {
   await page
     .locator('[data-phase="walking"]')
     .waitFor({ state: "attached", timeout: 15000 });
-  const routeProgress = page.getByRole("progressbar", { name: "체험 경로 진행" });
+  const routeProgress = page.getByRole("progressbar", {
+    name: "실제 거리와 무관한 체험 경로 진행",
+  });
   await page.waitForFunction(
     () => {
       const progress = document.querySelector('[role="progressbar"]');
@@ -729,7 +753,7 @@ try {
   });
   report.mobile.journeyArrived = true;
   const mobileRouteMeasure = mobilePage.locator(
-    'aside[aria-label="체험 눈금과 거리 상태 안내"]',
+    'aside[aria-label="거리 비교와 체험 눈금 안내"]',
   );
   report.mobile.routeMeasureVisible = await mobileRouteMeasure.evaluate(
     (note) => Number.parseFloat(getComputedStyle(note).opacity) > 0.9,
@@ -738,10 +762,21 @@ try {
     ?.replace(/\s+/g, " ")
     .trim();
   report.mobile.routeCautionVisible = await mobilePage
-    .getByText("실제 거리 아님", { exact: true })
+    .getByText("체험 30칸은 거리 단위 아님", { exact: true })
     .isVisible();
+  report.mobile.modernDistanceVisible =
+    (await mobilePage.getByText("공주→서울 · 직선 약 125km", { exact: true }).isVisible()) &&
+    (await mobilePage
+      .getByText("도로거리 아님 · 고지도 노정 미확인", { exact: true })
+      .isVisible());
+  const mobileDistanceComparison = mobileRouteMeasure.locator(
+    'dl[aria-label="현대 거리와 고지도 거리 비교"]',
+  );
+  report.mobile.modernDistanceMeters = Number(
+    await mobileDistanceComparison.getAttribute("data-modern-distance-meters"),
+  );
   const mobileRouteProgress = mobilePage.getByRole("progressbar", {
-    name: "체험 경로 진행",
+    name: "실제 거리와 무관한 체험 경로 진행",
   });
   report.mobile.routeProgressComplete =
     Number(await mobileRouteProgress.getAttribute("aria-valuenow")) ===
@@ -751,9 +786,6 @@ try {
   report.mobile.routeProgressMax = Number(
     await mobileRouteProgress.getAttribute("aria-valuemax"),
   );
-  report.mobile.routeArrivalSummaryVisible = await mobilePage
-    .getByText("10 · 20 → 총 30칸", { exact: true })
-    .isVisible();
   report.mobile.arrivalStepText = await mobilePage
     .getByText(`총 ${await mobileRouteProgress.getAttribute("aria-valuemax")}칸`, {
       exact: true,
@@ -786,6 +818,89 @@ try {
   );
 
   await mobileContext.close();
+
+  const alternateDistanceContext = await createContext(browser, {
+    viewport: { width: 1487, height: 1058 },
+    reducedMotion: "reduce",
+  });
+  const alternateDistancePage = await alternateDistanceContext.newPage();
+  attachDiagnostics(alternateDistancePage, "alternate-distance");
+  await navigate(alternateDistancePage, baseUrl, "alternate-distance.idle");
+  await alternateDistancePage.locator("#gyeol-place-search").fill("광화문");
+  await alternateDistancePage
+    .locator('form[role="search"]')
+    .evaluate((form) => form.requestSubmit());
+  await alternateDistancePage
+    .getByRole("heading", { name: "한양·한성부 권역 후보" })
+    .waitFor({ state: "visible" });
+  await alternateDistancePage
+    .getByRole("button", { name: "한성부 권역 지도 체험하기" })
+    .click();
+  await alternateDistancePage.locator('[data-ready="true"][data-phase="arrived"]').waitFor({
+    state: "attached",
+    timeout: 30000,
+  });
+  const alternateDistanceComparison = alternateDistancePage.locator(
+    'dl[aria-label="현대 거리와 고지도 거리 비교"]',
+  );
+  report.desktop.alternateDistanceMeters = Number(
+    await alternateDistanceComparison.getAttribute("data-modern-distance-meters"),
+  );
+  report.desktop.alternateDistanceDestination =
+    await alternateDistanceComparison.getAttribute("data-destination-id");
+  report.desktop.alternateDistanceText = await alternateDistanceComparison
+    .locator("dd")
+    .first()
+    .textContent();
+  report.desktop.alternateDistanceLocation = await alternateDistancePage
+    .locator('li[aria-current="location"] strong')
+    .textContent();
+  await capture(
+    alternateDistancePage,
+    `service-alternate-distance-${version}.png`,
+    "alternate-distance.arrived",
+  );
+  await alternateDistanceContext.close();
+
+  const grantedLocationContext = await createContext(browser, {
+    viewport: { width: 1487, height: 1058 },
+    reducedMotion: "reduce",
+    permissions: ["geolocation"],
+    geolocation: { latitude: 37.57, longitude: 126.98 },
+  });
+  const grantedLocationPage = await grantedLocationContext.newPage();
+  attachDiagnostics(grantedLocationPage, "location-granted");
+  await navigate(grantedLocationPage, baseUrl, "location-granted.idle");
+  await grantedLocationPage
+    .getByRole("button", { name: "현재 위치 사용" })
+    .click();
+  await grantedLocationPage
+    .getByRole("heading", { name: "한양·한성부 권역 후보" })
+    .waitFor({ state: "visible" });
+  await grantedLocationPage
+    .getByRole("button", { name: "한성부 권역 지도 체험하기" })
+    .click();
+  await grantedLocationPage.locator('[data-ready="true"][data-phase="arrived"]').waitFor({
+    state: "attached",
+    timeout: 30000,
+  });
+  const grantedLocationDistance = grantedLocationPage.locator(
+    'dl[aria-label="현대 거리와 고지도 거리 비교"]',
+  );
+  report.desktop.grantedLocationDistanceMeters = Number(
+    await grantedLocationDistance.getAttribute("data-modern-distance-meters"),
+  );
+  report.desktop.grantedLocationDistanceDestination =
+    await grantedLocationDistance.getAttribute("data-destination-id");
+  report.desktop.grantedLocationDistanceBasis = await grantedLocationPage
+    .getByText(/공주시청 ↔ 서울시청 좌표 기준/)
+    .textContent();
+  await capture(
+    grantedLocationPage,
+    `service-location-granted-${version}.png`,
+    "location-granted.arrived",
+  );
+  await grantedLocationContext.close();
 
   const locationContext = await createContext(browser, {
     viewport: { width: 1487, height: 1058 },
@@ -837,17 +952,39 @@ try {
     desktopRouteMeasure:
       report.desktop.routeMeasureVisible === true &&
       /한 획 = 체험 눈금 1칸/.test(report.desktop.routeMeasureText ?? "") &&
-      /현대 좌표 거리\s*산출 전/.test(report.desktop.routeMeasureText ?? "") &&
-      /고지도 노정 거리\s*근거 확인 중/.test(
+      /현대 좌표 직선거리\s*약 125km/.test(
         report.desktop.routeMeasureText ?? "",
       ) &&
-      /체험 눈금은 실제 거리값이 아닙니다/.test(
+      /고지도 노정 거리\s*현재 확인되지 않음/.test(
+        report.desktop.routeMeasureText ?? "",
+      ) &&
+      /체험 30칸은 실제 거리 단위가 아닙니다/.test(
         report.desktop.routeMeasureText ?? "",
       ) &&
       /원본 대동여지도 도로는 10리마다 점/.test(
         report.desktop.routeMeasureText ?? "",
       ) &&
       !/체험 거리 1리/.test(report.desktop.routeMeasureText ?? ""),
+    desktopModernDistance:
+      Math.abs(report.desktop.modernDistanceMeters - 125142) <= 2 &&
+      report.desktop.modernDistanceMethod === "great-circle" &&
+      report.desktop.modernDistanceOrigin === "gongju-city-hall" &&
+      report.desktop.modernDistanceDestination === "seoul-city-hall" &&
+      report.desktop.modernDistanceText === "약 125km" &&
+      /공주시청 ↔ 서울시청 좌표 기준 · 도로 이동거리와 다름/.test(
+        report.desktop.modernDistanceBasis ?? "",
+      ),
+    desktopAlternateModernDistance:
+      Math.abs(report.desktop.alternateDistanceMeters - 126214) <= 2 &&
+      report.desktop.alternateDistanceDestination === "gwanghwamun" &&
+      report.desktop.alternateDistanceText === "약 126km" &&
+      report.desktop.alternateDistanceLocation === "광화문",
+    desktopGrantedLocationDistance:
+      Math.abs(report.desktop.grantedLocationDistanceMeters - 125142) <= 2 &&
+      report.desktop.grantedLocationDistanceDestination === "seoul-city-hall" &&
+      /공주시청 ↔ 서울시청 좌표 기준 · 도로 이동거리와 다름/.test(
+        report.desktop.grantedLocationDistanceBasis ?? "",
+      ),
     desktopRouteProgress:
       report.desktop.routeProgressIncreases === true &&
       report.desktop.routeProgressStep > 0 &&
@@ -891,14 +1028,15 @@ try {
     mobileRouteMeasure:
       report.mobile.routeMeasureVisible === true &&
       /한 획 = 체험 눈금 1칸/.test(report.mobile.routeMeasureText ?? "") &&
-      /실제 거리 아님/.test(report.mobile.routeMeasureText ?? "") &&
+      /체험 30칸은 거리 단위 아님/.test(report.mobile.routeMeasureText ?? "") &&
       report.mobile.routeCautionVisible === true,
+    mobileModernDistance:
+      report.mobile.modernDistanceVisible === true &&
+      Math.abs(report.mobile.modernDistanceMeters - 125142) <= 2,
     mobileRouteProgressComplete:
       report.mobile.routeProgressComplete === true &&
       report.mobile.routeProgressMax === 30,
-    mobileArrivalStep:
-      report.mobile.arrivalStepText === "총 30칸" &&
-      report.mobile.routeArrivalSummaryVisible === true,
+    mobileArrivalStep: report.mobile.arrivalStepText === "총 30칸",
     mobileArrived: Boolean(report.mobile.activeDoseongdoLocation),
     mobileNoHorizontalOverflow: [
       report.mobile.idleLayout,
