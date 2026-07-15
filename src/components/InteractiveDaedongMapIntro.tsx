@@ -14,6 +14,7 @@ import {
 } from "../domain/roadDistance";
 import type { DemoPlace, MapRegionReference } from "../domain/gyeolEvidence";
 import { publicAssetUrl } from "../utils/publicAssetUrl";
+import { GangneungRouteScene } from "./GangneungRouteScene";
 import styles from "./interactive-map/InteractiveDaedongMapIntro.module.css";
 
 type IntroPhase =
@@ -784,11 +785,9 @@ export function InteractiveDaedongMapIntro({
   };
 
   const enterRoute = () => {
-    // 강릉 경로 체험: 지도가 펼쳐지며 선비가 옛 길을 걸어간다.
-    // (현재는 기존 펼침·보행 연출을 재사용. 강릉 회랑·관동대로 좌표 정교화는 후속 단계.)
+    // 강릉 경로 체험: 한양→강릉 관동대로가 그려지며 선비가 그 길을 걸어간다.
+    timelineRef.current?.kill();
     setRouteMode(true);
-    resetExperience(false);
-    window.requestAnimationFrame(() => runJourney());
   };
 
   const runJourney = () => {
@@ -1516,6 +1515,10 @@ export function InteractiveDaedongMapIntro({
         >
           처음부터 다시 보기
         </button>
+
+        {routeMode && (
+          <GangneungRouteScene onBack={() => setRouteMode(false)} />
+        )}
       </div>
     </section>
   );
