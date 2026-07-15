@@ -4,7 +4,8 @@ import { publicAssetUrl } from "../utils/publicAssetUrl";
 // '서울 권역 한성부 古今地名 對照 지도' 형태로, 판독 근거 패널과 함께 확대(zoom-in)로 펼친다.
 // 표시 지도는 실제 판본 스캔이며, 공공누리 제1유형으로 출처를 표기한다.
 
-const DOSEONGDO_URL = publicAssetUrl("assets/official/nmk-shinsu19997-doseongdo-original.jpg");
+// 한성 원본판: 대동여지도 신유본 도성도(채색) — 국립중앙박물관 신수19997 (E드라이브 원본 _6).
+const DOSEONGDO_URL = publicAssetUrl("assets/hanseong-doseongdo-wonbon.jpg");
 
 const CANDIDATES = [
   { hanja: "漢城", kor: "한성", confidence: "높음" },
@@ -23,10 +24,11 @@ const EVIDENCE = [
 export function HanseongHaeseolReveal() {
   const styleText = `
     @keyframes hs-zoom {
-      from { transform: scale(0.92); opacity: 0; }
+      from { transform: scale(0.58); opacity: 0; }
+      60% { opacity: 1; }
       to { transform: scale(1); opacity: 1; }
     }
-    .hs-spread { animation: hs-zoom 1.15s cubic-bezier(0.16, 0.84, 0.32, 1) both; }
+    .hs-spread { animation: hs-zoom 1.4s cubic-bezier(0.16, 0.84, 0.32, 1) both; transform-origin: 62% 46%; }
     @media (prefers-reduced-motion: reduce) {
       .hs-spread { animation: none; opacity: 1; transform: none; }
     }
@@ -89,7 +91,7 @@ export function HanseongHaeseolReveal() {
           >
             <img
               src={DOSEONGDO_URL}
-              alt="1861년 대동여지도 신유본 도성도 원본 (국립중앙박물관 신수19997)"
+              alt="1861년 대동여지도 신유본 도성도 채색 원본판 (국립중앙박물관 신수19997)"
               style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
             />
           </div>

@@ -15,6 +15,7 @@ import {
 import type { DemoPlace, MapRegionReference } from "../domain/gyeolEvidence";
 import { publicAssetUrl } from "../utils/publicAssetUrl";
 import { GangneungRouteScene } from "./GangneungRouteScene";
+import { GangneungHaeseolReveal } from "./GangneungHaeseolReveal";
 import { HanseongHaeseolReveal } from "./HanseongHaeseolReveal";
 import styles from "./interactive-map/InteractiveDaedongMapIntro.module.css";
 
@@ -424,8 +425,8 @@ export function InteractiveDaedongMapIntro({
   const [assetsReady, setAssetsReady] = useState(false);
   const [assetError, setAssetError] = useState(false);
   const [detailCreditExpanded, setDetailCreditExpanded] = useState(false);
-  // 흐름 재설계: 한양은 정적 클로즈업(접힘·워커 없음), 강릉 경로 질문 시에만 경로/선비 보행.
-  const [routeMode, setRouteMode] = useState(false);
+  // 흐름: 한성 도성도 클로즈업 → '어느 지역?' 강릉 → 강릉 원본판 클로즈업 → 절첩 경로+선비 보행.
+  const [gangneungView, setGangneungView] = useState<"none" | "reveal" | "route">("none");
   const [roadDistance, setRoadDistance] = useState<RoadDistanceState>({
     status: "loading",
     destinationId: "seoul-city-hall"
@@ -761,7 +762,7 @@ export function InteractiveDaedongMapIntro({
     if (!root || !assetsReady) return;
 
     timelineRef.current?.kill();
-    setRouteMode(false);
+    setGangneungView("none");
 
     gsap.set(idlePlateRef.current, { autoAlpha: 0 });
     gsap.set(centeredMapRef.current, { autoAlpha: 0 });
@@ -778,10 +779,10 @@ export function InteractiveDaedongMapIntro({
     focusLater(() => gangneungPromptRef.current);
   };
 
-  const enterRoute = () => {
-    // 강릉 경로 체험: 한양→강릉 관동대로가 그려지며 선비가 그 길을 걸어간다.
+  const askGangneung = () => {
+    // '어느 지역으로 가볼까요?' → 강릉: 강릉 원본판 클로즈업으로 이동.
     timelineRef.current?.kill();
-    setRouteMode(true);
+    setGangneungView("reveal");
   };
 
   const runJourney = () => {
@@ -1219,13 +1220,13 @@ export function InteractiveDaedongMapIntro({
           )}
         </figure>
 
-        {phase === "arrived" && !routeMode && <HanseongHaeseolReveal />}
+        {phase === "arrived" && gangneungView === "none" && <HanseongHaeseolReveal />}
 
-        {phase === "arrived" && !routeMode && (
+        {phase === "arrived" && gangneungView === "none" && (
           <button
             ref={gangneungPromptRef}
             type="button"
-            onClick={enterRoute}
+            onClick={askGangneung}
             style={{
               position: "absolute",
               left: "50%",
@@ -1246,7 +1247,7 @@ export function InteractiveDaedongMapIntro({
               backdropFilter: "blur(3px)"
             }}
           >
-            강릉까지 가려면 어떤 길로 가야 하나요? →
+            어느 지역으로 가볼까요? · 강릉 江陵 →
           </button>
         )}
 
@@ -1254,7 +1255,7 @@ export function InteractiveDaedongMapIntro({
           ref={foldedMapRef}
           className={styles.foldedMap}
           aria-hidden={phase === "idle" || phase === "positioning"}
-          hidden={!routeMode}
+          hidden={gangneungView !== "route"}
         >
           <img
             ref={foldedBaseRef}
@@ -1347,7 +1348,7 @@ export function InteractiveDaedongMapIntro({
           className={styles.routeMilestones}
           aria-label="체험 눈금 10칸 단위 이정표"
           aria-hidden="true"
-          hidden={!routeMode}
+          hidden={gangneungView !== "route"}
         >
           {journeyMilestones.map((milestone) => (
             <li
@@ -1370,7 +1371,7 @@ export function InteractiveDaedongMapIntro({
           className={styles.routeMeasure}
           aria-label="거리 비교와 체험 눈금 안내"
           aria-hidden={phase === "idle" || phase === "positioning"}
-          hidden={!routeMode}
+          hidden={gangneungView !== "route"}
         >
           <span className={styles.routeMeasureSample} aria-hidden="true">
             — — — ··· <b>● 10칸</b>
@@ -1467,7 +1468,7 @@ export function InteractiveDaedongMapIntro({
           </small>
         </aside>
 
-        <div ref={walkerRef} className={styles.walker} aria-hidden="true" hidden={!routeMode}>
+        <div ref={walkerRef} className={styles.walker} aria-hidden="true" hidden={gangneungView !== "route"}>
           <img
             src={WALKER_URL}
             alt=""
@@ -1485,7 +1486,7 @@ export function InteractiveDaedongMapIntro({
           className={styles.arrivalStamp}
           style={arrivalStyle}
           aria-hidden="true"
-          hidden={!routeMode}
+          hidden={gangneungView !== "route"}
         >
           <strong>도착</strong>
           <small>총 {journeyVisualStepCount}칸</small>
@@ -1497,7 +1498,7 @@ export function InteractiveDaedongMapIntro({
           className={styles.skipButton}
           onClick={finishJourney}
           disabled={phase === "idle" || phase === "arrived"}
-          hidden={!routeMode}
+          hidden={gangneungView !== "route"}
         >
           이동 건너뛰기
         </button>
@@ -1512,8 +1513,12 @@ export function InteractiveDaedongMapIntro({
           처음부터 다시 보기
         </button>
 
-        {routeMode && (
-          <GangneungRouteScene onBack={() => setRouteMode(false)} />
+        {gangneungView === "reveal" && (
+          <GangneungHaeseolReveal onGoRoute={() => setGangneungView("route")} />
+        )}
+
+        {gangneungView === "route" && (
+          <GangneungRouteScene onBack={() => setGangneungView("reveal")} />
         )}
       </div>
     </section>
