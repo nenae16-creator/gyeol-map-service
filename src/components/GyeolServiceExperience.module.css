@@ -379,6 +379,9 @@
   font-size: clamp(10px, 0.86vw, 13px);
   font-weight: 900;
   cursor: pointer;
+  /* 한국어는 낱말 단위로 줄바꿈 ('체험/하기'처럼 쪼개지지 않게) */
+  word-break: keep-all;
+  text-wrap: balance;
 }
 
 .primaryButton {

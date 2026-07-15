@@ -10,10 +10,12 @@ const SEONBI_URL = publicAssetUrl("assets/seonbi-walk-sheet.png");
 const VB_W = 1000;
 const VB_H = 543;
 const FOLD_PANELS = 8;
-// 절첩식(아코디언): 접힌 상태는 각 폭이 FOLD_ANGLE만큼 접혀 가로로 압축(cos), 펼치면 평평해진다.
-const FOLD_ANGLE = 74;
+// 절첩식(아코디언): 실물 사진처럼 폭의 앞/뒷면이 번갈아 보이는 지그재그.
+// 각도가 너무 크면(≥70°) 폭이 종잇장처럼 얇아져 '접힌 책'으로 안 보인다 → 60°.
+const FOLD_ANGLE = 60;
 const FOLD_COMPRESS = Math.cos((FOLD_ANGLE * Math.PI) / 180);
 const PANEL_W = 100 / FOLD_PANELS;
+const FOLD_HOLD = 0.9; // 접힌 상태를 충분히 보여준 뒤 펼치기 시작
 const SEONBI_FRAMES = 8;
 const SEONBI_SHEET_W = 1200; // 8 * 150
 const SEONBI_SHEET_H = 214;
@@ -64,9 +66,10 @@ function catmull(points: Point[], seg = 26): Point[] {
   return out;
 }
 
-const UNFOLD_SECONDS = 0.72;
-const UNFOLD_STAGGER = 0.16;
-const REVEAL_DELAY = FOLD_PANELS * UNFOLD_STAGGER + UNFOLD_SECONDS + 0.2; // 완전히 펼쳐진 뒤 길·선비 시작
+const UNFOLD_SECONDS = 0.85;
+const UNFOLD_STAGGER = 0.14;
+// 접힘 유지 → 좌→우 순차 펼침이 끝난 뒤 길·선비 시작
+const REVEAL_DELAY = FOLD_HOLD + FOLD_PANELS * UNFOLD_STAGGER + UNFOLD_SECONDS + 0.2;
 const WALK_SECONDS = 5.6;
 const SEONBI_CYCLE = 0.62;
 // 강릉에 도착하면 걷기를 멈춘다(보행 시간만큼만 다리 순환, 이후 마지막 프레임 유지).
@@ -157,7 +160,9 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
       transform: translate(-50%, -100%) scale(0.3); transform-origin:50% 100%;
       background-image:url(${SEONBI_URL}); background-repeat:no-repeat;
       background-size:${SEONBI_SHEET_W}px ${SEONBI_SHEET_H}px;
-      animation: gg-seonbi-steps ${SEONBI_CYCLE}s steps(${SEONBI_FRAMES}) ${REVEAL_DELAY}s ${SEONBI_STEPS_COUNT} both;
+      /* fill:backwards — 끝나면 기본 프레임(0)으로 돌아가 강릉에 '서 있게' 된다.
+         (both로 두면 종료 상태가 시트 밖 -${SEONBI_SHEET_W}px라 선비가 사라짐) */
+      animation: gg-seonbi-steps ${SEONBI_CYCLE}s steps(${SEONBI_FRAMES}) ${REVEAL_DELAY}s ${SEONBI_STEPS_COUNT} backwards;
       filter:drop-shadow(0 4px 5px rgba(0,0,0,0.45)); }
     @media (prefers-reduced-motion: reduce) {
       /* 접힘 연출 없이 즉시 펼쳐진 상태로(애니메이션은 fill로 끝상태 유지) */
@@ -187,7 +192,15 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
     >
       <style dangerouslySetInnerHTML={{ __html: styleText }} />
 
-      <div style={{ position: "relative", flex: 1, minHeight: 0, perspective: "1500px" }}>
+      <div
+        style={{
+          position: "relative",
+          flex: 1,
+          minHeight: 0,
+          perspective: "900px",
+          perspectiveOrigin: "42% 46%"
+        }}
+      >
         {/* 절첩식 지도 펼침 — 접힌 책이 펼쳐지며 회랑(길 바탕)이 드러난다 */}
         <div style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d" }}>
           {Array.from({ length: FOLD_PANELS }).map((_, index) => {
@@ -203,7 +216,7 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
                   backgroundPositionX: `${(index / (FOLD_PANELS - 1)) * 100}%`,
                   transformOrigin: isLeftHinge ? "left center" : "right center",
                   transform: `rotateY(${isLeftHinge ? FOLD_ANGLE : -FOLD_ANGLE}deg)`,
-                  animation: `gg-unfold-${index} ${UNFOLD_SECONDS}s cubic-bezier(0.22,0.92,0.28,1) ${index * UNFOLD_STAGGER}s both`,
+                  animation: `gg-unfold-${index} ${UNFOLD_SECONDS}s cubic-bezier(0.22,0.92,0.28,1) ${(FOLD_HOLD + index * UNFOLD_STAGGER).toFixed(2)}s both`,
                   filter: "brightness(0.86) saturate(0.94)"
                 }}
               >
