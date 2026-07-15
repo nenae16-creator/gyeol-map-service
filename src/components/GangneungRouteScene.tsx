@@ -2,21 +2,21 @@ import { useMemo } from "react";
 import { publicAssetUrl } from "../utils/publicAssetUrl";
 
 // 한양에서 강릉까지, 실제 관동대로(경흥로·평해로)를 판본 회랑 위에 재구성한 경로 체험.
-// 지도가 펼쳐지며 붓선(방점=십리)이 이어지고 선비가 그 길을 걸어간다.
+// 절첩식(접이식) 지도가 펼쳐지며 길이 만들어지고, 영상에서 쓴 실제 선비가 그 길을 걸어간다.
 // CSS 애니메이션 기반(요청: 실제 관동대로 정교화, 브라우저 RAF 스로틀에도 견고).
 
 const CORRIDOR_URL = publicAssetUrl("assets/gyeol-gangneung-corridor.jpg");
+const SEONBI_URL = publicAssetUrl("assets/seonbi-walk-sheet.png");
 const VB_W = 1000;
 const VB_H = 543;
+const FOLD_PANELS = 6;
+const SEONBI_FRAMES = 8;
+const SEONBI_SHEET_W = 1200; // 8 * 150
+const SEONBI_SHEET_H = 214;
 
 type Point = [number, number];
 
-type Waypoint = {
-  name: string;
-  x: number;
-  y: number;
-  mark?: "start" | "peak" | "end";
-};
+type Waypoint = { name: string; x: number; y: number; mark?: "start" | "peak" | "end" };
 
 // 관동대로 역참 고증(한양·양근·원주·방림·진부·대관령·강릉)을 회랑 좌표(0~1)로 정규화.
 const WAYPOINTS: Waypoint[] = [
@@ -60,31 +60,26 @@ function catmull(points: Point[], seg = 26): Point[] {
   return out;
 }
 
-const DRAW_SECONDS = 6.6;
-const DRAW_DELAY = 0.35;
+const UNFOLD_SECONDS = 0.62;
+const UNFOLD_STAGGER = 0.12;
+const REVEAL_DELAY = FOLD_PANELS * UNFOLD_STAGGER + 0.3; // 펼침이 끝난 뒤 길·선비 시작
+const WALK_SECONDS = 5.6;
 
 export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
   const model = useMemo(() => {
     const normalized: Point[] = WAYPOINTS.map((point) => [point.x, point.y]);
-    const dense = catmull(normalized).map(
-      ([x, y]) => [x * VB_W, y * VB_H] as Point
-    );
+    const dense = catmull(normalized).map(([x, y]) => [x * VB_W, y * VB_H] as Point);
 
     const pathD =
-      "M " +
-      dense.map((point) => `${point[0].toFixed(1)} ${point[1].toFixed(1)}`).join(" L ");
+      "M " + dense.map((point) => `${point[0].toFixed(1)} ${point[1].toFixed(1)}`).join(" L ");
 
     let pathLength = 0;
     const cumulative = [0];
     for (let i = 1; i < dense.length; i += 1) {
-      pathLength += Math.hypot(
-        dense[i][0] - dense[i - 1][0],
-        dense[i][1] - dense[i - 1][1]
-      );
+      pathLength += Math.hypot(dense[i][0] - dense[i - 1][0], dense[i][1] - dense[i - 1][1]);
       cumulative.push(pathLength);
     }
 
-    // 방점: 회랑 폭의 약 2.1%마다 하나(십리방점 모티프). 그려지는 붓선에 맞춰 순차 노출.
     const step = VB_W * 0.021;
     const dots: Array<{ x: number; y: number; delay: number }> = [];
     let acc = 0;
@@ -93,23 +88,15 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
       if (acc >= step) {
         acc = 0;
         const fraction = pathLength ? cumulative[i] / pathLength : 0;
-        dots.push({
-          x: dense[i][0],
-          y: dense[i][1],
-          delay: DRAW_DELAY + fraction * DRAW_SECONDS
-        });
+        dots.push({ x: dense[i][0], y: dense[i][1], delay: REVEAL_DELAY + fraction * WALK_SECONDS });
       }
     }
 
-    // 선비 보행 keyframes: 웨이포인트를 누적 거리 비율에 맞춰 통과.
     const wpCumulative = [0];
     for (let i = 1; i < normalized.length; i += 1) {
       wpCumulative.push(
         wpCumulative[i - 1] +
-          Math.hypot(
-            normalized[i][0] - normalized[i - 1][0],
-            normalized[i][1] - normalized[i - 1][1]
-          )
+          Math.hypot(normalized[i][0] - normalized[i - 1][0], normalized[i][1] - normalized[i - 1][1])
       );
     }
     const wpTotal = wpCumulative[wpCumulative.length - 1] || 1;
@@ -125,41 +112,43 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
   const start = WAYPOINTS[0];
 
   const styleText = `
+    @keyframes gg-unfold-left { from { transform: rotateY(80deg); } to { transform: rotateY(0deg); } }
+    @keyframes gg-unfold-right { from { transform: rotateY(-80deg); } to { transform: rotateY(0deg); } }
     @keyframes gg-draw { to { stroke-dashoffset: 0; } }
     @keyframes gg-fade { to { opacity: 1; } }
     @keyframes gg-walk { ${model.walkStops} }
-    @keyframes gg-bob {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-4px); }
-    }
-    .gg-road {
-      stroke-dasharray: ${model.pathLength.toFixed(1)};
-      stroke-dashoffset: ${model.pathLength.toFixed(1)};
-      animation: gg-draw ${DRAW_SECONDS}s ease-in-out ${DRAW_DELAY}s forwards;
-    }
-    .gg-dot { opacity: 0; animation: gg-fade 0.35s ease-out forwards; }
-    .gg-seonbi {
-      left: ${(start.x * 100).toFixed(2)}%;
-      top: ${(start.y * 100).toFixed(2)}%;
-      animation: gg-walk ${DRAW_SECONDS}s ease-in-out ${DRAW_DELAY}s forwards;
-    }
-    .gg-bob { animation: gg-bob 0.5s ease-in-out infinite; }
+    @keyframes gg-seonbi-steps { from { background-position-x: 0px; } to { background-position-x: -${SEONBI_SHEET_W}px; } }
+
+    .gg-fold-panel { position:absolute; top:0; height:100%; background-image:url(${CORRIDOR_URL});
+      background-repeat:no-repeat; background-size:${FOLD_PANELS * 100}% 100%; backface-visibility:hidden;
+      box-shadow: inset -6px 0 12px rgba(0,0,0,0.28); }
+    .gg-road { stroke-dasharray:${model.pathLength.toFixed(1)}; stroke-dashoffset:${model.pathLength.toFixed(1)};
+      animation: gg-draw ${WALK_SECONDS}s ease-in-out ${REVEAL_DELAY}s forwards; }
+    .gg-dot { opacity:0; animation: gg-fade 0.35s ease-out forwards; }
+    .gg-reveal { opacity:0; animation: gg-fade 0.5s ease-out ${REVEAL_DELAY}s forwards; }
+    .gg-seonbi-wrap { position:absolute; left:${(start.x * 100).toFixed(2)}%; top:${(start.y * 100).toFixed(2)}%;
+      width:0; height:0; opacity:0;
+      animation: gg-fade 0.3s ease-out ${REVEAL_DELAY}s forwards,
+                 gg-walk ${WALK_SECONDS}s ease-in-out ${REVEAL_DELAY}s forwards; }
+    .gg-seonbi-sprite { position:absolute; left:0; top:0; width:150px; height:${SEONBI_SHEET_H}px;
+      transform: translate(-50%, -100%) scale(0.3); transform-origin:50% 100%;
+      background-image:url(${SEONBI_URL}); background-repeat:no-repeat;
+      background-size:${SEONBI_SHEET_W}px ${SEONBI_SHEET_H}px;
+      animation: gg-seonbi-steps 0.62s steps(${SEONBI_FRAMES}) infinite;
+      animation-delay:${REVEAL_DELAY}s; filter:drop-shadow(0 4px 5px rgba(0,0,0,0.45)); }
     @media (prefers-reduced-motion: reduce) {
-      .gg-road { animation: none; stroke-dashoffset: 0; }
-      .gg-dot { animation: none; opacity: 1; }
-      .gg-seonbi {
-        animation: none;
-        left: ${(end.x * 100).toFixed(2)}%;
-        top: ${(end.y * 100).toFixed(2)}%;
-      }
-      .gg-bob { animation: none; }
+      .gg-fold-panel { animation:none !important; transform:none !important; }
+      .gg-road { animation:none; stroke-dashoffset:0; }
+      .gg-dot, .gg-reveal, .gg-seonbi-wrap { animation:none; opacity:1; }
+      .gg-seonbi-wrap { left:${(end.x * 100).toFixed(2)}%; top:${(end.y * 100).toFixed(2)}%; }
+      .gg-seonbi-sprite { animation:none; }
     }
   `;
 
   return (
     <div
       role="group"
-      aria-label="한양에서 강릉까지 관동대로를 따라가는 경로 체험"
+      aria-label="접이식 지도가 펼쳐지며 선비가 한양에서 강릉까지 관동대로를 걷는 경로 체험"
       style={{
         position: "absolute",
         inset: 0,
@@ -172,30 +161,43 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
     >
       <style dangerouslySetInnerHTML={{ __html: styleText }} />
 
-      <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
-        <img
-          src={CORRIDOR_URL}
-          alt="대동여지도 판본의 한양에서 강릉에 이르는 관동대로 회랑"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            filter: "brightness(0.82) saturate(0.92)"
-          }}
-        />
+      <div style={{ position: "relative", flex: 1, minHeight: 0, perspective: "1500px" }}>
+        {/* 절첩식 지도 펼침 — 접힌 책이 펼쳐지며 회랑(길 바탕)이 드러난다 */}
+        <div style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d" }}>
+          {Array.from({ length: FOLD_PANELS }).map((_, index) => {
+            const isLeftHinge = index % 2 === 0;
+            return (
+              <div
+                key={index}
+                className="gg-fold-panel"
+                aria-hidden="true"
+                style={{
+                  left: `${(index * 100) / FOLD_PANELS}%`,
+                  width: `${100 / FOLD_PANELS}%`,
+                  backgroundPositionX: `${(index / (FOLD_PANELS - 1)) * 100}%`,
+                  transformOrigin: isLeftHinge ? "left center" : "right center",
+                  transform: `rotateY(${isLeftHinge ? 80 : -80}deg)`,
+                  animation: `${isLeftHinge ? "gg-unfold-left" : "gg-unfold-right"} ${UNFOLD_SECONDS}s cubic-bezier(0.22,0.9,0.3,1) ${index * UNFOLD_STAGGER}s forwards`,
+                  filter: "brightness(0.82) saturate(0.92)"
+                }}
+              />
+            );
+          })}
+        </div>
+
         <div
+          className="gg-reveal"
           aria-hidden="true"
           style={{
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(180deg, rgba(8,10,14,0.55), rgba(8,10,14,0.05) 26%, rgba(8,10,14,0.4))"
+              "linear-gradient(180deg, rgba(8,10,14,0.5), rgba(8,10,14,0.04) 26%, rgba(8,10,14,0.38))"
           }}
         />
 
         <svg
+          className="gg-reveal"
           aria-hidden="true"
           viewBox={`0 0 ${VB_W} ${VB_H}`}
           preserveAspectRatio="none"
@@ -228,6 +230,7 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
           return (
             <div
               key={point.name}
+              className="gg-reveal"
               style={{
                 position: "absolute",
                 left: `${point.x * 100}%`,
@@ -267,33 +270,13 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
           );
         })}
 
-        <div
-          className="gg-seonbi"
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            width: 46,
-            height: 70,
-            transform: "translate(-50%, -88%)",
-            zIndex: 6,
-            filter: "drop-shadow(0 6px 6px rgba(0,0,0,0.5))"
-          }}
-        >
-          <div className="gg-bob">
-            <svg viewBox="0 0 46 70" width="46" height="70">
-              <g fill="#171a1f">
-                <ellipse cx="23" cy="15" rx="18.5" ry="4.8" />
-                <rect x="17.5" y="5" width="11" height="11" rx="3" />
-                <path d="M15 27 Q23 20 31 27 L33 56 Q23 63 13 56 Z" />
-                <circle cx="23" cy="21.5" r="5.6" fill="#e7ddcf" />
-                <rect x="17.5" y="53" width="5" height="14" rx="2.2" />
-                <rect x="23.5" y="53" width="5" height="14" rx="2.2" />
-              </g>
-            </svg>
-          </div>
+        {/* 영상에서 쓴 실제 선비 — 걷기 사이클 스프라이트가 관동대로를 따라 이동 */}
+        <div className="gg-seonbi-wrap" aria-hidden="true" style={{ zIndex: 6 }}>
+          <div className="gg-seonbi-sprite" />
         </div>
 
         <div
+          className="gg-reveal"
           style={{
             position: "absolute",
             left: "clamp(18px, 3vw, 34px)",
@@ -332,18 +315,11 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
               color: "#f2ece0"
             }}
           >
-            직선으로 긋지 않습니다. 판본의 도로망을 근거로 한양에서 원주를 지나{" "}
+            접이식 지도가 펼쳐지며 길이 이어집니다. 판본의 도로망을 근거로 한양에서 원주를 지나{" "}
             <strong style={{ color: "#e6c574" }}>대관령</strong>을 넘어 강릉까지, 옛{" "}
-            <strong style={{ color: "#e6c574" }}>관동대로 약 오백스물다섯 리</strong>를
-            선비가 되짚습니다.
+            <strong style={{ color: "#e6c574" }}>관동대로 약 오백스물다섯 리</strong>를 선비가 되짚습니다.
           </p>
-          <p
-            style={{
-              margin: "8px 0 0",
-              font: "400 12px/1.5 'Malgun Gothic',sans-serif",
-              color: "#98a0ac"
-            }}
-          >
+          <p style={{ margin: "8px 0 0", font: "400 12px/1.5 'Malgun Gothic',sans-serif", color: "#98a0ac" }}>
             ※ 판본 도로망을 근거로 재구성한 경로 · 방점 하나 = 십 리(십리방점)
           </p>
         </div>
@@ -372,7 +348,7 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
             cursor: "pointer"
           }}
         >
-          한양 도성도로 돌아가기
+          한성부 도성도로 돌아가기
         </button>
       </div>
     </div>
