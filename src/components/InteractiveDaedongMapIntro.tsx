@@ -15,6 +15,7 @@ import {
 import type { DemoPlace, MapRegionReference } from "../domain/gyeolEvidence";
 import { publicAssetUrl } from "../utils/publicAssetUrl";
 import { GangneungRouteScene } from "./GangneungRouteScene";
+import { HanseongHaeseolReveal } from "./HanseongHaeseolReveal";
 import styles from "./interactive-map/InteractiveDaedongMapIntro.module.css";
 
 type IntroPhase =
@@ -771,15 +772,8 @@ export function InteractiveDaedongMapIntro({
     gsap.set(walkerRef.current, { autoAlpha: 0 });
     gsap.set(arrivalRef.current, { autoAlpha: 0 });
     gsap.set(replayRef.current, { autoAlpha: 0 });
-    gsap.set(detailMapRef.current, {
-      autoAlpha: 1,
-      xPercent: 0,
-      yPercent: 0,
-      scale: 1,
-      rotateZ: 0,
-      rotateY: 0
-    });
-    gsap.set(detailImageRef.current, { filter: DETAIL_IMAGE_FILTER_VISIBLE });
+    // 실제 도성도 detail 대신 '한성부 해설도' 이미지를 확대 애니메이션으로 보여준다.
+    gsap.set(detailMapRef.current, { autoAlpha: 0 });
     setPhase("arrived");
     focusLater(() => gangneungPromptRef.current);
   };
@@ -1224,6 +1218,8 @@ export function InteractiveDaedongMapIntro({
             </figcaption>
           )}
         </figure>
+
+        {phase === "arrived" && !routeMode && <HanseongHaeseolReveal />}
 
         {phase === "arrived" && !routeMode && (
           <button
