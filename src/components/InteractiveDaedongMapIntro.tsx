@@ -1236,15 +1236,15 @@ export function InteractiveDaedongMapIntro({
               maxWidth: "min(86%, 640px)",
               padding: "14px 26px",
               borderRadius: "14px",
-              border: "1px solid rgba(230,197,116,0.6)",
-              background:
-                "linear-gradient(180deg, rgba(230,197,116,0.2), rgba(230,197,116,0.08))",
-              color: "#f4ece0",
-              font: "600 clamp(15px, 1.5vw, 19px)/1.3 'Batang','바탕',serif",
+              border: "1px solid rgba(122,31,31,0.5)",
+              background: "linear-gradient(180deg, #f3e7cd, #e6d5ae)",
+              color: "#5a1616",
+              font: "700 clamp(15px, 1.5vw, 19px)/1.3 'Batang','바탕',serif",
               letterSpacing: "0.01em",
+              wordBreak: "keep-all",
+              whiteSpace: "nowrap",
               cursor: "pointer",
-              boxShadow: "0 12px 30px rgba(0,0,0,0.42)",
-              backdropFilter: "blur(3px)"
+              boxShadow: "0 10px 26px rgba(60,45,26,0.4)"
             }}
           >
             어느 지역으로 가볼까요? · 강릉 江陵 →

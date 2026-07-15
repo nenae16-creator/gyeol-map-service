@@ -168,10 +168,12 @@ export function GangneungHaeseolReveal({ onGoRoute }: { onGoRoute: () => void })
               font: "700 clamp(14px, 1.5vw, 17px)/1.3 'Batang','바탕',serif",
               padding: "12px 16px",
               borderRadius: 10,
-              cursor: "pointer"
+              cursor: "pointer",
+              wordBreak: "keep-all",
+              whiteSpace: "nowrap"
             }}
           >
-            이 길을 찾아가기 · 선비와 함께 →
+            이 길을 찾아가기 →
           </button>
         </aside>
       </div>

@@ -9,7 +9,11 @@ const CORRIDOR_URL = publicAssetUrl("assets/gyeol-gangneung-corridor.jpg");
 const SEONBI_URL = publicAssetUrl("assets/seonbi-walk-sheet.png");
 const VB_W = 1000;
 const VB_H = 543;
-const FOLD_PANELS = 6;
+const FOLD_PANELS = 8;
+// 절첩식(아코디언): 접힌 상태는 각 폭이 FOLD_ANGLE만큼 접혀 가로로 압축(cos), 펼치면 평평해진다.
+const FOLD_ANGLE = 74;
+const FOLD_COMPRESS = Math.cos((FOLD_ANGLE * Math.PI) / 180);
+const PANEL_W = 100 / FOLD_PANELS;
 const SEONBI_FRAMES = 8;
 const SEONBI_SHEET_W = 1200; // 8 * 150
 const SEONBI_SHEET_H = 214;
@@ -60,10 +64,13 @@ function catmull(points: Point[], seg = 26): Point[] {
   return out;
 }
 
-const UNFOLD_SECONDS = 0.62;
-const UNFOLD_STAGGER = 0.12;
-const REVEAL_DELAY = FOLD_PANELS * UNFOLD_STAGGER + 0.3; // 펼침이 끝난 뒤 길·선비 시작
+const UNFOLD_SECONDS = 0.72;
+const UNFOLD_STAGGER = 0.16;
+const REVEAL_DELAY = FOLD_PANELS * UNFOLD_STAGGER + UNFOLD_SECONDS + 0.2; // 완전히 펼쳐진 뒤 길·선비 시작
 const WALK_SECONDS = 5.6;
+const SEONBI_CYCLE = 0.62;
+// 강릉에 도착하면 걷기를 멈춘다(보행 시간만큼만 다리 순환, 이후 마지막 프레임 유지).
+const SEONBI_STEPS_COUNT = Math.max(1, Math.round(WALK_SECONDS / SEONBI_CYCLE));
 
 export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
   const model = useMemo(() => {
@@ -111,9 +118,21 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
   const end = WAYPOINTS[WAYPOINTS.length - 1];
   const start = WAYPOINTS[0];
 
+  // 폭마다 '접힌 위치 → 펼친 위치'로 이동+회전 → 실제 아코디언처럼 좌에서 우로 펼쳐진다.
+  const foldKeyframes = Array.from({ length: FOLD_PANELS })
+    .map((_, i) => {
+      const flatLeft = (i * PANEL_W).toFixed(3);
+      const foldLeft = (i * PANEL_W * FOLD_COMPRESS).toFixed(3);
+      const angle = i % 2 === 0 ? FOLD_ANGLE : -FOLD_ANGLE;
+      return `@keyframes gg-unfold-${i} {
+        from { left:${foldLeft}%; transform: rotateY(${angle}deg); }
+        to { left:${flatLeft}%; transform: rotateY(0deg); }
+      }`;
+    })
+    .join("\n");
+
   const styleText = `
-    @keyframes gg-unfold-left { from { transform: rotateY(80deg); } to { transform: rotateY(0deg); } }
-    @keyframes gg-unfold-right { from { transform: rotateY(-80deg); } to { transform: rotateY(0deg); } }
+    ${foldKeyframes}
     @keyframes gg-draw { to { stroke-dashoffset: 0; } }
     @keyframes gg-fade { to { opacity: 1; } }
     @keyframes gg-walk { ${model.walkStops} }
@@ -121,7 +140,11 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
 
     .gg-fold-panel { position:absolute; top:0; height:100%; background-image:url(${CORRIDOR_URL});
       background-repeat:no-repeat; background-size:${FOLD_PANELS * 100}% 100%; backface-visibility:hidden;
-      box-shadow: inset -6px 0 12px rgba(0,0,0,0.28); }
+      border-left:1px solid rgba(74,56,32,0.34); border-right:1px solid rgba(255,244,214,0.10); }
+    /* 접힘 자국 명암: 폭마다 교차 음영 → 펼쳐진 뒤에도 지그재그 입체감이 남는다 */
+    .gg-fold-shade { position:absolute; inset:0; pointer-events:none; }
+    .gg-fold-shade.a { background:linear-gradient(90deg, rgba(28,18,6,0.34), rgba(28,18,6,0.02) 46%, rgba(255,246,220,0.12) 82%, rgba(28,18,6,0.20)); }
+    .gg-fold-shade.b { background:linear-gradient(270deg, rgba(28,18,6,0.34), rgba(28,18,6,0.02) 46%, rgba(255,246,220,0.12) 82%, rgba(28,18,6,0.20)); }
     .gg-road { stroke-dasharray:${model.pathLength.toFixed(1)}; stroke-dashoffset:${model.pathLength.toFixed(1)};
       animation: gg-draw ${WALK_SECONDS}s ease-in-out ${REVEAL_DELAY}s forwards; }
     .gg-dot { opacity:0; animation: gg-fade 0.35s ease-out forwards; }
@@ -134,10 +157,11 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
       transform: translate(-50%, -100%) scale(0.3); transform-origin:50% 100%;
       background-image:url(${SEONBI_URL}); background-repeat:no-repeat;
       background-size:${SEONBI_SHEET_W}px ${SEONBI_SHEET_H}px;
-      animation: gg-seonbi-steps 0.62s steps(${SEONBI_FRAMES}) infinite;
-      animation-delay:${REVEAL_DELAY}s; filter:drop-shadow(0 4px 5px rgba(0,0,0,0.45)); }
+      animation: gg-seonbi-steps ${SEONBI_CYCLE}s steps(${SEONBI_FRAMES}) ${REVEAL_DELAY}s ${SEONBI_STEPS_COUNT} both;
+      filter:drop-shadow(0 4px 5px rgba(0,0,0,0.45)); }
     @media (prefers-reduced-motion: reduce) {
-      .gg-fold-panel { animation:none !important; transform:none !important; }
+      /* 접힘 연출 없이 즉시 펼쳐진 상태로(애니메이션은 fill로 끝상태 유지) */
+      .gg-fold-panel { animation-duration:0.001s !important; animation-delay:0s !important; }
       .gg-road { animation:none; stroke-dashoffset:0; }
       .gg-dot, .gg-reveal, .gg-seonbi-wrap { animation:none; opacity:1; }
       .gg-seonbi-wrap { left:${(end.x * 100).toFixed(2)}%; top:${(end.y * 100).toFixed(2)}%; }
@@ -153,7 +177,9 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
         position: "absolute",
         inset: 0,
         zIndex: 40,
-        background: "#0b0d12",
+        // 나무 책상 위에 절첩 지도를 펼치는 느낌
+        background:
+          "radial-gradient(120% 100% at 50% 30%, #4a3626 0%, #3a2a1b 38%, #2a1e13 68%, #1b130c 100%)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden"
@@ -172,15 +198,17 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
                 className="gg-fold-panel"
                 aria-hidden="true"
                 style={{
-                  left: `${(index * 100) / FOLD_PANELS}%`,
-                  width: `${100 / FOLD_PANELS}%`,
+                  left: `${(index * PANEL_W * FOLD_COMPRESS).toFixed(3)}%`,
+                  width: `${PANEL_W}%`,
                   backgroundPositionX: `${(index / (FOLD_PANELS - 1)) * 100}%`,
                   transformOrigin: isLeftHinge ? "left center" : "right center",
-                  transform: `rotateY(${isLeftHinge ? 80 : -80}deg)`,
-                  animation: `${isLeftHinge ? "gg-unfold-left" : "gg-unfold-right"} ${UNFOLD_SECONDS}s cubic-bezier(0.22,0.9,0.3,1) ${index * UNFOLD_STAGGER}s forwards`,
-                  filter: "brightness(0.82) saturate(0.92)"
+                  transform: `rotateY(${isLeftHinge ? FOLD_ANGLE : -FOLD_ANGLE}deg)`,
+                  animation: `gg-unfold-${index} ${UNFOLD_SECONDS}s cubic-bezier(0.22,0.92,0.28,1) ${index * UNFOLD_STAGGER}s both`,
+                  filter: "brightness(0.86) saturate(0.94)"
                 }}
-              />
+              >
+                <span className={`gg-fold-shade ${isLeftHinge ? "a" : "b"}`} />
+              </div>
             );
           })}
         </div>
