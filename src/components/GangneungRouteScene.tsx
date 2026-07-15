@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { ReactElement } from "react";
 import { publicAssetUrl } from "../utils/publicAssetUrl";
 
 // 한양에서 강릉까지, 실제 관동대로(경흥로·평해로)를 판본 회랑 위에 재구성한 경로 체험.
@@ -13,8 +14,10 @@ const FOLD_PANELS = 8;
 // 절첩식(아코디언): 실물 사진처럼 폭의 앞/뒷면이 번갈아 보이는 지그재그.
 // 각도가 너무 크면(≥70°) 폭이 종잇장처럼 얇아져 '접힌 책'으로 안 보인다 → 60°.
 const FOLD_ANGLE = 60;
-const FOLD_COMPRESS = Math.cos((FOLD_ANGLE * Math.PI) / 180);
 const PANEL_W = 100 / FOLD_PANELS;
+// 폭0은 +θ, 이후 폭은 '부모 기준' ∓2θ → 절대각이 ±θ로 번갈아 = 산/골 지그재그 접힘.
+const panelStartAngle = (i: number) =>
+  i === 0 ? FOLD_ANGLE : i % 2 === 1 ? -2 * FOLD_ANGLE : 2 * FOLD_ANGLE;
 const FOLD_HOLD = 0.9; // 접힌 상태를 충분히 보여준 뒤 펼치기 시작
 const SEONBI_FRAMES = 8;
 const SEONBI_SHEET_W = 1200; // 8 * 150
@@ -121,17 +124,43 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
   const end = WAYPOINTS[WAYPOINTS.length - 1];
   const start = WAYPOINTS[0];
 
-  // 폭마다 '접힌 위치 → 펼친 위치'로 이동+회전 → 실제 아코디언처럼 좌에서 우로 펼쳐진다.
+  // 폭0 안에 폭1, 그 안에 폭2… 각 폭은 부모의 오른쪽 접선(left:100%)에 붙는다 → 실제로 '접힌 종이'.
+  const foldStack = (() => {
+    let node: ReactElement | null = null;
+    for (let i = FOLD_PANELS - 1; i >= 0; i -= 1) {
+      const inner = node;
+      node = (
+        <div
+          key={i}
+          className="gg-fold-panel"
+          aria-hidden="true"
+          style={{
+            left: i === 0 ? 0 : "100%",
+            width: i === 0 ? `${PANEL_W}%` : "100%",
+            backgroundPositionX: `${(i / (FOLD_PANELS - 1)) * 100}%`,
+            transformOrigin: "left center",
+            transformStyle: "preserve-3d",
+            transform: `rotateY(${panelStartAngle(i)}deg)`,
+            animation: `gg-unfold-${i} ${UNFOLD_SECONDS}s cubic-bezier(0.22,0.92,0.28,1) ${(
+              FOLD_HOLD +
+              i * UNFOLD_STAGGER
+            ).toFixed(2)}s both`
+          }}
+        >
+          <span className={`gg-fold-shade ${i % 2 === 0 ? "a" : "b"}`} />
+          {inner}
+        </div>
+      );
+    }
+    return node;
+  })();
+
+  // 펼침은 각 폭의 회전을 0으로 되돌리면 자연히 좌→우로 이어붙는다(잘린 조각이 벌어지는 게 아님).
   const foldKeyframes = Array.from({ length: FOLD_PANELS })
-    .map((_, i) => {
-      const flatLeft = (i * PANEL_W).toFixed(3);
-      const foldLeft = (i * PANEL_W * FOLD_COMPRESS).toFixed(3);
-      const angle = i % 2 === 0 ? FOLD_ANGLE : -FOLD_ANGLE;
-      return `@keyframes gg-unfold-${i} {
-        from { left:${foldLeft}%; transform: rotateY(${angle}deg); }
-        to { left:${flatLeft}%; transform: rotateY(0deg); }
-      }`;
-    })
+    .map(
+      (_, i) =>
+        `@keyframes gg-unfold-${i} { from { transform: rotateY(${panelStartAngle(i)}deg); } to { transform: rotateY(0deg); } }`
+    )
     .join("\n");
 
   const styleText = `
@@ -142,8 +171,8 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
     @keyframes gg-seonbi-steps { from { background-position-x: 0px; } to { background-position-x: -${SEONBI_SHEET_W}px; } }
 
     .gg-fold-panel { position:absolute; top:0; height:100%; background-image:url(${CORRIDOR_URL});
-      background-repeat:no-repeat; background-size:${FOLD_PANELS * 100}% 100%; backface-visibility:hidden;
-      border-left:1px solid rgba(74,56,32,0.34); border-right:1px solid rgba(255,244,214,0.10); }
+      background-repeat:no-repeat; background-size:${FOLD_PANELS * 100}% 100%;
+      border-left:1px solid rgba(74,56,32,0.38); box-shadow:-1px 0 3px rgba(30,18,6,0.28); }
     /* 접힘 자국 명암: 폭마다 교차 음영 → 펼쳐진 뒤에도 지그재그 입체감이 남는다 */
     .gg-fold-shade { position:absolute; inset:0; pointer-events:none; }
     .gg-fold-shade.a { background:linear-gradient(90deg, rgba(28,18,6,0.34), rgba(28,18,6,0.02) 46%, rgba(255,246,220,0.12) 82%, rgba(28,18,6,0.20)); }
@@ -201,29 +230,9 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
           perspectiveOrigin: "42% 46%"
         }}
       >
-        {/* 절첩식 지도 펼침 — 접힌 책이 펼쳐지며 회랑(길 바탕)이 드러난다 */}
+        {/* 절첩식 지도 — 폭들이 접선으로 이어진 채 지그재그로 접혀 있다가 펼쳐진다 */}
         <div style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d" }}>
-          {Array.from({ length: FOLD_PANELS }).map((_, index) => {
-            const isLeftHinge = index % 2 === 0;
-            return (
-              <div
-                key={index}
-                className="gg-fold-panel"
-                aria-hidden="true"
-                style={{
-                  left: `${(index * PANEL_W * FOLD_COMPRESS).toFixed(3)}%`,
-                  width: `${PANEL_W}%`,
-                  backgroundPositionX: `${(index / (FOLD_PANELS - 1)) * 100}%`,
-                  transformOrigin: isLeftHinge ? "left center" : "right center",
-                  transform: `rotateY(${isLeftHinge ? FOLD_ANGLE : -FOLD_ANGLE}deg)`,
-                  animation: `gg-unfold-${index} ${UNFOLD_SECONDS}s cubic-bezier(0.22,0.92,0.28,1) ${(FOLD_HOLD + index * UNFOLD_STAGGER).toFixed(2)}s both`,
-                  filter: "brightness(0.86) saturate(0.94)"
-                }}
-              >
-                <span className={`gg-fold-shade ${isLeftHinge ? "a" : "b"}`} />
-              </div>
-            );
-          })}
+          {foldStack}
         </div>
 
         <div

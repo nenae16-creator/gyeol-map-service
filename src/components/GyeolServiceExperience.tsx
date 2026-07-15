@@ -256,8 +256,8 @@ export function GyeolServiceExperience() {
     (region) => region.id === "local-hanseong-provisional"
   );
   const markerStyle = {
-    "--marker-x": `${(mapRegion?.point.x ?? 0.349695) * 100}%`,
-    "--marker-y": `${(mapRegion?.point.y ?? 0.44069) * 100}%`
+    "--marker-x": `${(mapRegion?.point.x ?? 0.375) * 100}%`,
+    "--marker-y": `${(mapRegion?.point.y ?? 0.5619) * 100}%`
   } as CSSProperties;
 
   return (
