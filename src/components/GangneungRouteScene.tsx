@@ -77,8 +77,16 @@ const WALK_SECONDS = 5.6;
 const SEONBI_CYCLE = 0.62;
 // 강릉에 도착하면 걷기를 멈춘다(보행 시간만큼만 다리 순환, 이후 마지막 프레임 유지).
 const SEONBI_STEPS_COUNT = Math.max(1, Math.round(WALK_SECONDS / SEONBI_CYCLE));
+// 선비가 강릉에 닿은 뒤 '도시로 들어가볼까요?'가 뜬다.
+const ARRIVE_AT = REVEAL_DELAY + WALK_SECONDS + 0.25;
 
-export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
+export function GangneungRouteScene({
+  onBack,
+  onEnterCity
+}: {
+  onBack: () => void;
+  onEnterCity: () => void;
+}) {
   const model = useMemo(() => {
     const normalized: Point[] = WAYPOINTS.map((point) => [point.x, point.y]);
     const dense = catmull(normalized).map(([x, y]) => [x * VB_W, y * VB_H] as Point);
@@ -181,6 +189,8 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
       animation: gg-draw ${WALK_SECONDS}s ease-in-out ${REVEAL_DELAY}s forwards; }
     .gg-dot { opacity:0; animation: gg-fade 0.35s ease-out forwards; }
     .gg-reveal { opacity:0; animation: gg-fade 0.5s ease-out ${REVEAL_DELAY}s forwards; }
+    /* 선비가 강릉에 닿은 뒤에 나타나는 '도시로 들어가기' */
+    .gg-arrive { opacity:0; animation: gg-fade 0.6s ease-out ${ARRIVE_AT}s forwards; }
     .gg-seonbi-wrap { position:absolute; left:${(start.x * 100).toFixed(2)}%; top:${(start.y * 100).toFixed(2)}%;
       width:0; height:0; opacity:0;
       animation: gg-fade 0.3s ease-out ${REVEAL_DELAY}s forwards,
@@ -197,7 +207,7 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
       /* 접힘 연출 없이 즉시 펼쳐진 상태로(애니메이션은 fill로 끝상태 유지) */
       .gg-fold-panel { animation-duration:0.001s !important; animation-delay:0s !important; }
       .gg-road { animation:none; stroke-dashoffset:0; }
-      .gg-dot, .gg-reveal, .gg-seonbi-wrap { animation:none; opacity:1; }
+      .gg-dot, .gg-reveal, .gg-seonbi-wrap, .gg-arrive { animation:none; opacity:1; }
       .gg-seonbi-wrap { left:${(end.x * 100).toFixed(2)}%; top:${(end.y * 100).toFixed(2)}%; }
       .gg-seonbi-sprite { animation:none; }
     }
@@ -395,10 +405,31 @@ export function GangneungRouteScene({ onBack }: { onBack: () => void }) {
             font: "400 14px/1 'Malgun Gothic',sans-serif",
             padding: "10px 18px",
             borderRadius: 10,
-            cursor: "pointer"
+            cursor: "pointer",
+            wordBreak: "keep-all"
           }}
         >
           한성부 도성도로 돌아가기
+        </button>
+
+        <button
+          type="button"
+          className="gg-arrive"
+          onClick={onEnterCity}
+          style={{
+            appearance: "none",
+            border: "1px solid rgba(94,207,196,0.65)",
+            background: "linear-gradient(180deg, rgba(94,207,196,0.22), rgba(94,207,196,0.08))",
+            color: "#eafaf7",
+            font: "700 clamp(14px, 1.5vw, 17px)/1 'Batang','바탕',serif",
+            padding: "11px 22px",
+            borderRadius: 10,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+            wordBreak: "keep-all"
+          }}
+        >
+          강릉 도시로 들어가볼까요? →
         </button>
       </div>
     </div>

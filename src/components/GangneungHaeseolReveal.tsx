@@ -1,8 +1,8 @@
 import { publicAssetUrl } from "../utils/publicAssetUrl";
 
-// '강릉'으로 답하면 실제 강릉 원본판(대동여지도 신유본 _80, 동해안·대관령·강릉부)을
-// 클로즈업(zoom-in) 애니메이션으로 펼치고 판독 근거와 함께 설명한다.
-// 이어서 '이 길을 찾아가기'로 절첩식 경로 + 선비 보행으로 넘어간다.
+// 선비가 강릉에 닿은 뒤 '도시로 들어가볼까요?'에 답하면 나오는 마지막 화면.
+// 실제 강릉 원본판(대동여지도 신유본 _80, 동해안·대관령·강릉부)을 클로즈업(zoom-in)으로
+// 펼치고 판독 근거와 함께 설명한다. 체험의 종착점.
 
 const GANGNEUNG_URL = publicAssetUrl("assets/gangneung-wonbon.jpg");
 
@@ -19,7 +19,7 @@ const EVIDENCE = [
   { title: "명주(溟州) 옛 지명", meta: "신라 757 ~ 고려" }
 ];
 
-export function GangneungHaeseolReveal({ onGoRoute }: { onGoRoute: () => void }) {
+export function GangneungHaeseolReveal({ onRestart }: { onRestart: () => void }) {
   const styleText = `
     @keyframes gr-zoom {
       from { transform: scale(0.58); opacity: 0; }
@@ -158,7 +158,7 @@ export function GangneungHaeseolReveal({ onGoRoute }: { onGoRoute: () => void })
 
           <button
             type="button"
-            onClick={onGoRoute}
+            onClick={onRestart}
             style={{
               marginTop: "auto",
               appearance: "none",
@@ -173,7 +173,7 @@ export function GangneungHaeseolReveal({ onGoRoute }: { onGoRoute: () => void })
               whiteSpace: "nowrap"
             }}
           >
-            이 길을 찾아가기 →
+            ← 한성부에서 다시 시작
           </button>
         </aside>
       </div>

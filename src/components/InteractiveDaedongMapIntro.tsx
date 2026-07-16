@@ -16,6 +16,7 @@ import type { DemoPlace, MapRegionReference } from "../domain/gyeolEvidence";
 import { publicAssetUrl } from "../utils/publicAssetUrl";
 import { GangneungRouteScene } from "./GangneungRouteScene";
 import { GangneungHaeseolReveal } from "./GangneungHaeseolReveal";
+import { GangneungPickScene } from "./GangneungPickScene";
 import { HanseongHaeseolReveal } from "./HanseongHaeseolReveal";
 import styles from "./interactive-map/InteractiveDaedongMapIntro.module.css";
 
@@ -425,8 +426,9 @@ export function InteractiveDaedongMapIntro({
   const [assetsReady, setAssetsReady] = useState(false);
   const [assetError, setAssetError] = useState(false);
   const [detailCreditExpanded, setDetailCreditExpanded] = useState(false);
-  // 흐름: 한성 도성도 클로즈업 → '어느 지역?' 강릉 → 강릉 원본판 클로즈업 → 절첩 경로+선비 보행.
-  const [gangneungView, setGangneungView] = useState<"none" | "reveal" | "route">("none");
+  // 흐름: 한성 도성도 → '어느 지역?' → 전도에서 강릉 핀 선택(pick) → 절첩 경로+선비 보행(route)
+  //      → 도착 후 '도시로 들어가볼까요?' → 강릉 원본판 클로즈업·설명(city, 종착).
+  const [gangneungView, setGangneungView] = useState<"none" | "pick" | "route" | "city">("none");
   const [roadDistance, setRoadDistance] = useState<RoadDistanceState>({
     status: "loading",
     destinationId: "seoul-city-hall"
@@ -779,10 +781,10 @@ export function InteractiveDaedongMapIntro({
     focusLater(() => gangneungPromptRef.current);
   };
 
-  const askGangneung = () => {
-    // '어느 지역으로 가볼까요?' → 강릉: 강릉 원본판 클로즈업으로 이동.
+  const askRegion = () => {
+    // '어느 지역으로 가볼까요?' → 전도를 펼쳐 목적지(강릉) 핀을 고르게 한다.
     timelineRef.current?.kill();
-    setGangneungView("reveal");
+    setGangneungView("pick");
   };
 
   const runJourney = () => {
@@ -1226,7 +1228,7 @@ export function InteractiveDaedongMapIntro({
           <button
             ref={gangneungPromptRef}
             type="button"
-            onClick={askGangneung}
+            onClick={askRegion}
             style={{
               position: "absolute",
               left: "50%",
@@ -1247,7 +1249,7 @@ export function InteractiveDaedongMapIntro({
               boxShadow: "0 10px 26px rgba(60,45,26,0.4)"
             }}
           >
-            어느 지역으로 가볼까요? · 강릉 江陵 →
+            어느 지역으로 가볼까요? →
           </button>
         )}
 
@@ -1513,12 +1515,19 @@ export function InteractiveDaedongMapIntro({
           처음부터 다시 보기
         </button>
 
-        {gangneungView === "reveal" && (
-          <GangneungHaeseolReveal onGoRoute={() => setGangneungView("route")} />
+        {gangneungView === "pick" && (
+          <GangneungPickScene onPick={() => setGangneungView("route")} />
         )}
 
         {gangneungView === "route" && (
-          <GangneungRouteScene onBack={() => setGangneungView("reveal")} />
+          <GangneungRouteScene
+            onBack={() => setGangneungView("pick")}
+            onEnterCity={() => setGangneungView("city")}
+          />
+        )}
+
+        {gangneungView === "city" && (
+          <GangneungHaeseolReveal onRestart={() => setGangneungView("none")} />
         )}
       </div>
     </section>
