@@ -97,7 +97,7 @@ function sourceLabel(source: SourceReference) {
 
 export function GyeolServiceExperience() {
   const [stage, setStage] = useState<ServiceStage>("idle");
-  const [query, setQuery] = useState("서울시청");
+  const [query, setQuery] = useState("서울");
   const [decodeStep, setDecodeStep] = useState(0);
   const [pendingResult, setPendingResult] = useState<GyeolResultEnvelope | null>(null);
   const [result, setResult] = useState<GyeolResultEnvelope | null>(null);
@@ -173,7 +173,7 @@ export function GyeolServiceExperience() {
 
     if (!place) {
       setNotice(
-        "현재 시범 서비스는 서울시청·광화문·경복궁 인근만 해독할 수 있습니다. 지원되는 예시 장소를 선택해 주세요."
+        "현재 시범 서비스는 서울·광화문·경복궁 인근만 해독할 수 있습니다. 지원되는 예시 장소를 선택해 주세요."
       );
       searchRef.current?.focus();
       return;
@@ -197,7 +197,7 @@ export function GyeolServiceExperience() {
 
         if (!isInsideSeoulDemoArea(coords.latitude, coords.longitude)) {
           setNotice(
-            "확인된 위치는 현재 시범 해독 권역 밖입니다. 결과를 임의로 만들지 않고 서울시청 예시만 제공합니다."
+            "확인된 위치는 현재 시범 해독 권역 밖입니다. 결과를 임의로 만들지 않고 서울 예시만 제공합니다."
           );
           return;
         }
@@ -216,7 +216,7 @@ export function GyeolServiceExperience() {
         setLocating(false);
         setNotice(
           error.code === error.PERMISSION_DENIED
-            ? "위치 권한을 사용할 수 없습니다. 장소를 직접 검색하거나 서울시청 예시를 선택해 주세요."
+            ? "위치 권한을 사용할 수 없습니다. 장소를 직접 검색하거나 서울 예시를 선택해 주세요."
             : "현재 위치를 확인하지 못했습니다. 장소명을 직접 입력해 주세요."
         );
       },
@@ -256,8 +256,8 @@ export function GyeolServiceExperience() {
     (region) => region.id === "local-hanseong-provisional"
   );
   const markerStyle = {
-    "--marker-x": `${(mapRegion?.point.x ?? 0.349695) * 100}%`,
-    "--marker-y": `${(mapRegion?.point.y ?? 0.44069) * 100}%`
+    "--marker-x": `${(mapRegion?.point.x ?? 0.375) * 100}%`,
+    "--marker-y": `${(mapRegion?.point.y ?? 0.5619) * 100}%`
   } as CSSProperties;
 
   return (
@@ -279,7 +279,7 @@ export function GyeolServiceExperience() {
             id="gyeol-place-search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="서울시청, 광화문처럼 장소를 입력하세요"
+            placeholder="서울, 광화문처럼 장소를 입력하세요"
             autoComplete="off"
           />
           <button type="submit" aria-label="입력한 장소를 옛지명으로 해독하기">
@@ -343,12 +343,12 @@ export function GyeolServiceExperience() {
                   <MapPinned aria-hidden="true" />
                   <span>
                     <small>첫 시범 위치</small>
-                    서울시청 · 서울특별시 중구
+                    서울 · 서울특별시 중구
                   </span>
                 </div>
 
                 <button className={styles.primaryButton} type="button" onClick={() => beginDecode(demoPlaces[0])}>
-                  서울시청 예시로 해독하기
+                  서울 예시로 해독하기
                   <ArrowRight aria-hidden="true" />
                 </button>
 

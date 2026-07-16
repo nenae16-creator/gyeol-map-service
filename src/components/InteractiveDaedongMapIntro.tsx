@@ -14,6 +14,9 @@ import {
 } from "../domain/roadDistance";
 import type { DemoPlace, MapRegionReference } from "../domain/gyeolEvidence";
 import { publicAssetUrl } from "../utils/publicAssetUrl";
+import { GangneungRouteScene } from "./GangneungRouteScene";
+import { GangneungHaeseolReveal } from "./GangneungHaeseolReveal";
+import { HanseongHaeseolReveal } from "./HanseongHaeseolReveal";
 import styles from "./interactive-map/InteractiveDaedongMapIntro.module.css";
 
 type IntroPhase =
@@ -368,13 +371,13 @@ function routePath(routePoints: Point[]) {
 }
 
 const phaseText: Record<IntroPhase, string> = {
-  idle: "가운데 대동여지도에서 한성부를 선택하세요.",
-  positioning: "대동여지도를 왼쪽 여정 위치로 옮기고 있습니다.",
-  unfolding: "접이식 지도가 펼쳐지며 체험 눈금 1칸 단위의 먹길이 이어지고 있습니다.",
-  revealing: "먹길 끝에서 국립중앙박물관 소장 대동여지도의 도성도를 확대하고 있습니다.",
+  idle: "대동여지도 원판에서 한성부(서울)를 선택하세요.",
+  positioning: "강릉 방향으로 지도를 옮기고 있습니다.",
+  unfolding: "접이식 지도가 펼쳐지며 옛 관동대로가 이어지고 있습니다.",
+  revealing: "한양 도성도를 확대하고 있습니다.",
   walking:
-    "김정호 캐릭터가 실제 거리가 아닌 체험 눈금 먹길을 따라 한성부 권역 후보로 이동하고 있습니다.",
-  arrived: "김정호 캐릭터가 도성도의 선택 위치 후보에 도착했습니다."
+    "선비가 판본에 그려진 옛 길을 따라 강릉으로 걸어가고 있습니다.",
+  arrived: "한양 도성도가 펼쳐졌습니다. 강릉까지의 길을 물어볼 수 있습니다."
 };
 
 function getRoutePoint(
@@ -422,6 +425,8 @@ export function InteractiveDaedongMapIntro({
   const [assetsReady, setAssetsReady] = useState(false);
   const [assetError, setAssetError] = useState(false);
   const [detailCreditExpanded, setDetailCreditExpanded] = useState(false);
+  // 흐름: 한성 도성도 클로즈업 → '어느 지역?' 강릉 → 강릉 원본판 클로즈업 → 절첩 경로+선비 보행.
+  const [gangneungView, setGangneungView] = useState<"none" | "reveal" | "route">("none");
   const [roadDistance, setRoadDistance] = useState<RoadDistanceState>({
     status: "loading",
     destinationId: "seoul-city-hall"
@@ -448,6 +453,7 @@ export function InteractiveDaedongMapIntro({
   const arrivalRef = useRef<HTMLDivElement | null>(null);
   const skipRef = useRef<HTMLButtonElement | null>(null);
   const replayRef = useRef<HTMLButtonElement | null>(null);
+  const gangneungPromptRef = useRef<HTMLButtonElement | null>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
   const walkProgressRef = useRef({ value: 0 });
   const progressDisplayRef = useRef("");
@@ -750,6 +756,35 @@ export function InteractiveDaedongMapIntro({
     focusLater(() => replayRef.current);
   };
 
+  // 한양 정적 클로즈업: 접힘·워커·거리 없이 도성도를 곧바로 펼쳐 보여준다.
+  const revealHanyang = () => {
+    const root = rootRef.current;
+    if (!root || !assetsReady) return;
+
+    timelineRef.current?.kill();
+    setGangneungView("none");
+
+    gsap.set(idlePlateRef.current, { autoAlpha: 0 });
+    gsap.set(centeredMapRef.current, { autoAlpha: 0 });
+    gsap.set(staticPlateRef.current, { autoAlpha: 1 });
+    gsap.set(hotspotRef.current, { autoAlpha: 0 });
+    gsap.set(foldedMapRef.current, { autoAlpha: 0 });
+    gsap.set(routeInkRef.current, { autoAlpha: 0 });
+    gsap.set(walkerRef.current, { autoAlpha: 0 });
+    gsap.set(arrivalRef.current, { autoAlpha: 0 });
+    gsap.set(replayRef.current, { autoAlpha: 0 });
+    // 실제 도성도 detail 대신 '한성부 해설도' 이미지를 확대 애니메이션으로 보여준다.
+    gsap.set(detailMapRef.current, { autoAlpha: 0 });
+    setPhase("arrived");
+    focusLater(() => gangneungPromptRef.current);
+  };
+
+  const askGangneung = () => {
+    // '어느 지역으로 가볼까요?' → 강릉: 강릉 원본판 클로즈업으로 이동.
+    timelineRef.current?.kill();
+    setGangneungView("reveal");
+  };
+
   const runJourney = () => {
     const root = rootRef.current;
     if (!root || !assetsReady || phase !== "idle") return;
@@ -961,12 +996,9 @@ export function InteractiveDaedongMapIntro({
   }, []);
 
   useEffect(() => {
-    if (!autoStart || !assetsReady || phase !== "idle" || autoStartedRef.current) return;
-
-    autoStartedRef.current = true;
-    const frame = window.requestAnimationFrame(runJourney);
-    return () => window.cancelAnimationFrame(frame);
-  }, [assetsReady, autoStart, phase]);
+    // 원판에서 사용자가 직접 한성부(서울)를 선택하도록 자동 실행하지 않는다.
+    if (autoStart) autoStartedRef.current = true;
+  }, [autoStart, assetsReady]);
 
   useEffect(() => {
     const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1064,9 +1096,9 @@ export function InteractiveDaedongMapIntro({
           ref={hotspotRef}
           type="button"
           className={styles.hansungHotspot}
-          onClick={runJourney}
+          onClick={revealHanyang}
           disabled={!assetsReady || phase !== "idle"}
-          aria-label="가운데 대동여지도에서 한성부를 선택해 여정을 시작하기"
+          aria-label="대동여지도 원판에서 한성부(서울)를 선택해 한양 도성도를 펼치기"
         >
           <span>한성부</span>
         </button>
@@ -1188,10 +1220,42 @@ export function InteractiveDaedongMapIntro({
           )}
         </figure>
 
+        {phase === "arrived" && gangneungView === "none" && <HanseongHaeseolReveal />}
+
+        {phase === "arrived" && gangneungView === "none" && (
+          <button
+            ref={gangneungPromptRef}
+            type="button"
+            onClick={askGangneung}
+            style={{
+              position: "absolute",
+              left: "50%",
+              bottom: "6.5%",
+              transform: "translateX(-50%)",
+              zIndex: 24,
+              maxWidth: "min(86%, 640px)",
+              padding: "14px 26px",
+              borderRadius: "14px",
+              border: "1px solid rgba(122,31,31,0.5)",
+              background: "linear-gradient(180deg, #f3e7cd, #e6d5ae)",
+              color: "#5a1616",
+              font: "700 clamp(15px, 1.5vw, 19px)/1.3 'Batang','바탕',serif",
+              letterSpacing: "0.01em",
+              wordBreak: "keep-all",
+              whiteSpace: "nowrap",
+              cursor: "pointer",
+              boxShadow: "0 10px 26px rgba(60,45,26,0.4)"
+            }}
+          >
+            어느 지역으로 가볼까요? · 강릉 江陵 →
+          </button>
+        )}
+
         <div
           ref={foldedMapRef}
           className={styles.foldedMap}
           aria-hidden={phase === "idle" || phase === "positioning"}
+          hidden={gangneungView !== "route"}
         >
           <img
             ref={foldedBaseRef}
@@ -1284,6 +1348,7 @@ export function InteractiveDaedongMapIntro({
           className={styles.routeMilestones}
           aria-label="체험 눈금 10칸 단위 이정표"
           aria-hidden="true"
+          hidden={gangneungView !== "route"}
         >
           {journeyMilestones.map((milestone) => (
             <li
@@ -1306,6 +1371,7 @@ export function InteractiveDaedongMapIntro({
           className={styles.routeMeasure}
           aria-label="거리 비교와 체험 눈금 안내"
           aria-hidden={phase === "idle" || phase === "positioning"}
+          hidden={gangneungView !== "route"}
         >
           <span className={styles.routeMeasureSample} aria-hidden="true">
             — — — ··· <b>● 10칸</b>
@@ -1402,7 +1468,7 @@ export function InteractiveDaedongMapIntro({
           </small>
         </aside>
 
-        <div ref={walkerRef} className={styles.walker} aria-hidden="true">
+        <div ref={walkerRef} className={styles.walker} aria-hidden="true" hidden={gangneungView !== "route"}>
           <img
             src={WALKER_URL}
             alt=""
@@ -1420,6 +1486,7 @@ export function InteractiveDaedongMapIntro({
           className={styles.arrivalStamp}
           style={arrivalStyle}
           aria-hidden="true"
+          hidden={gangneungView !== "route"}
         >
           <strong>도착</strong>
           <small>총 {journeyVisualStepCount}칸</small>
@@ -1431,6 +1498,7 @@ export function InteractiveDaedongMapIntro({
           className={styles.skipButton}
           onClick={finishJourney}
           disabled={phase === "idle" || phase === "arrived"}
+          hidden={gangneungView !== "route"}
         >
           이동 건너뛰기
         </button>
@@ -1444,6 +1512,14 @@ export function InteractiveDaedongMapIntro({
         >
           처음부터 다시 보기
         </button>
+
+        {gangneungView === "reveal" && (
+          <GangneungHaeseolReveal onGoRoute={() => setGangneungView("route")} />
+        )}
+
+        {gangneungView === "route" && (
+          <GangneungRouteScene onBack={() => setGangneungView("reveal")} />
+        )}
       </div>
     </section>
   );

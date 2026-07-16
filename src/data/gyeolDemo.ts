@@ -5,11 +5,11 @@ export type { DemoPlace } from "../domain/gyeolEvidence";
 export const demoPlaces: DemoPlace[] = [
   {
     id: "seoul-city-hall",
-    label: "서울시청",
-    adminLabel: "서울특별시 중구 세종대로",
+    label: "서울",
+    adminLabel: "서울특별시 중구 세종대로 (시청 일대)",
     latitude: 37.5663,
     longitude: 126.9779,
-    aliases: ["서울 시청", "시청", "서울특별시청"]
+    aliases: ["서울시청", "서울 시청", "시청", "서울특별시청", "서울특별시"]
   },
   {
     id: "gwanghwamun",
