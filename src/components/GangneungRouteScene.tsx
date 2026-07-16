@@ -189,8 +189,19 @@ export function GangneungRouteScene({
       animation: gg-draw ${WALK_SECONDS}s ease-in-out ${REVEAL_DELAY}s forwards; }
     .gg-dot { opacity:0; animation: gg-fade 0.35s ease-out forwards; }
     .gg-reveal { opacity:0; animation: gg-fade 0.5s ease-out ${REVEAL_DELAY}s forwards; }
-    /* 선비가 강릉에 닿은 뒤에 나타나는 '도시로 들어가기' */
-    .gg-arrive { opacity:0; animation: gg-fade 0.6s ease-out ${ARRIVE_AT}s forwards; }
+    /* 선비가 강릉에 닿으면 머리 위로 말풍선이 톡 뜬다 — 선비가 우리에게 묻는다 */
+    @keyframes gg-pop {
+      from { opacity:0; transform: translate(-50%, calc(-100% - 44px)) scale(0.72); }
+      to   { opacity:1; transform: translate(-50%, calc(-100% - 68px)) scale(1); }
+    }
+    .gg-bubble { animation: gg-pop 0.5s cubic-bezier(0.2,1.35,0.4,1) ${ARRIVE_AT}s both; }
+    .gg-bubble:hover { background:#fffaf0; }
+    .gg-bubble:focus-visible { outline:3px solid #e6c574; outline-offset:3px; }
+    /* 만화 말풍선 꼬리 (테두리 + 안쪽) */
+    .gg-bubble::before { content:""; position:absolute; left:50%; bottom:-15px; transform:translateX(-50%);
+      border:9px solid transparent; border-top:15px solid #2a2118; }
+    .gg-bubble::after { content:""; position:absolute; left:50%; bottom:-11px; transform:translateX(-50%);
+      border:7px solid transparent; border-top:12px solid #f7f0e1; }
     .gg-seonbi-wrap { position:absolute; left:${(start.x * 100).toFixed(2)}%; top:${(start.y * 100).toFixed(2)}%;
       width:0; height:0; opacity:0;
       animation: gg-fade 0.3s ease-out ${REVEAL_DELAY}s forwards,
@@ -207,7 +218,8 @@ export function GangneungRouteScene({
       /* 접힘 연출 없이 즉시 펼쳐진 상태로(애니메이션은 fill로 끝상태 유지) */
       .gg-fold-panel { animation-duration:0.001s !important; animation-delay:0s !important; }
       .gg-road { animation:none; stroke-dashoffset:0; }
-      .gg-dot, .gg-reveal, .gg-seonbi-wrap, .gg-arrive { animation:none; opacity:1; }
+      .gg-dot, .gg-reveal, .gg-seonbi-wrap { animation:none; opacity:1; }
+      .gg-bubble { animation:none; opacity:1; transform: translate(-50%, calc(-100% - 68px)); }
       .gg-seonbi-wrap { left:${(end.x * 100).toFixed(2)}%; top:${(end.y * 100).toFixed(2)}%; }
       .gg-seonbi-sprite { animation:none; }
     }
@@ -335,6 +347,33 @@ export function GangneungRouteScene({
           <div className="gg-seonbi-sprite" />
         </div>
 
+        {/* 강릉에 닿은 선비가 머리 위 말풍선으로 묻는다 — 누르면 강릉 도시로 */}
+        <button
+          type="button"
+          className="gg-bubble"
+          onClick={onEnterCity}
+          style={{
+            position: "absolute",
+            left: `${end.x * 100}%`,
+            top: `${end.y * 100}%`,
+            zIndex: 9,
+            appearance: "none",
+            padding: "10px 18px",
+            borderRadius: 16,
+            border: "2px solid #2a2118",
+            background: "#f7f0e1",
+            color: "#2a2118",
+            font: "700 clamp(12px, 1.3vw, 16px)/1.25 'Batang','바탕',serif",
+            whiteSpace: "nowrap",
+            wordBreak: "keep-all",
+            cursor: "pointer",
+            boxShadow: "0 6px 16px rgba(0,0,0,0.45)",
+            transition: "background 0.2s"
+          }}
+        >
+          강릉으로 들어가볼까요?
+        </button>
+
         <div
           className="gg-reveal"
           style={{
@@ -412,25 +451,6 @@ export function GangneungRouteScene({
           한성부 도성도로 돌아가기
         </button>
 
-        <button
-          type="button"
-          className="gg-arrive"
-          onClick={onEnterCity}
-          style={{
-            appearance: "none",
-            border: "1px solid rgba(94,207,196,0.65)",
-            background: "linear-gradient(180deg, rgba(94,207,196,0.22), rgba(94,207,196,0.08))",
-            color: "#eafaf7",
-            font: "700 clamp(14px, 1.5vw, 17px)/1 'Batang','바탕',serif",
-            padding: "11px 22px",
-            borderRadius: 10,
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-            wordBreak: "keep-all"
-          }}
-        >
-          강릉 도시로 들어가볼까요? →
-        </button>
       </div>
     </div>
   );
