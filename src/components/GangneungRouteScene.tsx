@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactElement } from "react";
 import { publicAssetUrl } from "../utils/publicAssetUrl";
 
@@ -87,6 +87,12 @@ export function GangneungRouteScene({
   onBack: () => void;
   onEnterCity: () => void;
 }) {
+  // 말풍선은 CSS 지연에 기대지 않고 타이머로 실제 렌더한다(탭 전환·애니 스로틀에도 확실히 뜨도록).
+  const [arrived, setArrived] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setArrived(true), ARRIVE_AT * 1000);
+    return () => window.clearTimeout(t);
+  }, []);
   const model = useMemo(() => {
     const normalized: Point[] = WAYPOINTS.map((point) => [point.x, point.y]);
     const dense = catmull(normalized).map(([x, y]) => [x * VB_W, y * VB_H] as Point);
@@ -194,7 +200,7 @@ export function GangneungRouteScene({
       from { opacity:0; transform: translate(-50%, calc(-100% - 44px)) scale(0.72); }
       to   { opacity:1; transform: translate(-50%, calc(-100% - 68px)) scale(1); }
     }
-    .gg-bubble { animation: gg-pop 0.5s cubic-bezier(0.2,1.35,0.4,1) ${ARRIVE_AT}s both; }
+    .gg-bubble { animation: gg-pop 0.5s cubic-bezier(0.2,1.35,0.4,1) both; }
     .gg-bubble:hover { background:#fffaf0; }
     .gg-bubble:focus-visible { outline:3px solid #e6c574; outline-offset:3px; }
     /* 만화 말풍선 꼬리 (테두리 + 안쪽) */
@@ -348,6 +354,7 @@ export function GangneungRouteScene({
         </div>
 
         {/* 강릉에 닿은 선비가 머리 위 말풍선으로 묻는다 — 누르면 강릉 도시로 */}
+        {arrived && (
         <button
           type="button"
           className="gg-bubble"
@@ -373,6 +380,7 @@ export function GangneungRouteScene({
         >
           강릉으로 들어가볼까요?
         </button>
+        )}
 
         <div
           className="gg-reveal"
