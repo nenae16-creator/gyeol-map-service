@@ -18,7 +18,7 @@ const PANEL_W = 100 / FOLD_PANELS;
 // 폭0은 +θ, 이후 폭은 '부모 기준' ∓2θ → 절대각이 ±θ로 번갈아 = 산/골 지그재그 접힘.
 const panelStartAngle = (i: number) =>
   i === 0 ? FOLD_ANGLE : i % 2 === 1 ? -2 * FOLD_ANGLE : 2 * FOLD_ANGLE;
-const FOLD_HOLD = 0.9; // 접힌 상태를 충분히 보여준 뒤 펼치기 시작
+const FOLD_HOLD = 0; // 멈칫하지 않고 곧바로 펼치기 시작
 const SEONBI_FRAMES = 8;
 const SEONBI_SHEET_W = 1200; // 8 * 150
 const SEONBI_SHEET_H = 214;
